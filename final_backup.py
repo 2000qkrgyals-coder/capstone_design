@@ -64,7 +64,7 @@ def load_floorplan_scaled(path: Path, max_width: int):
 # 폰트 로딩 (size 반영 가능)
 def _load_font(size: int):
     font_paths = [
-        "C:/Windows/Fonts/arial.ttf",                 # Windows
+        "C:/Windows/Fonts/Arial.ttf",                 # Windows
         "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", # Linux
     ]
