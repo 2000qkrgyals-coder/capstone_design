@@ -1,0 +1,7 @@
+streamlit
+streamlit-autorefresh
+numpy
+pillow
+matplotlib
+scipy
+pandas
