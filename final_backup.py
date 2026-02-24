@@ -62,21 +62,22 @@ def load_floorplan_scaled(path: Path, max_width: int):
 
 def _load_font(size: int):
     """
-    안정적으로 TTF 폰트를 불러오는 함수.
-    OS별 경로 지정, 실패 시 기본 폰트 fallback
+    항상 지정된 TTF 폰트를 불러오도록.
+    Windows / macOS / Linux 경로 예시 포함.
+    fallback 시 ImageFont.load_default() 사용.
     """
-    # Windows
-    for path in [
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/ARIAL.TTF",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-    ]:
+    # OS별 폰트 경로
+    font_paths = [
+        "C:/Windows/Fonts/arial.ttf",                 # Windows
+        "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" # Linux
+    ]
+    for path in font_paths:
         try:
             return ImageFont.truetype(path, size)
         except:
             continue
-    # fallback
+    # 폰트 로드 실패 시 기본 폰트
     return ImageFont.load_default()
 
 def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
@@ -84,8 +85,8 @@ def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_tex
     d = ImageDraw.Draw(out, "RGBA")
 
     # ✅ 폰트 크기 조정
-    font_big = _load_font(20)  # 왼쪽 위 현재 구간 글씨
-    font_mid = _load_font(16)  # 오른쪽 위 START / END 글씨
+    font_big = _load_font(28)  # 왼쪽 위 현재 구간 글씨
+    font_mid = _load_font(22)  # 오른쪽 위 START / END 글씨
 
     # 왼쪽 위: 현재 구간
     draw_badge(d, (8, 8), cur_text, font_big)
