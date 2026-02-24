@@ -79,8 +79,8 @@ def draw_time_overlays(img, cur_text, start_text, end_text):
     out = img.copy()
     d = ImageDraw.Draw(out, "RGBA")
 
-    font_big = _load_font(28)
-    font_mid = _load_font(22)
+    font_big = _load_font(60)
+    font_mid = _load_font(60)
 
     draw_badge(d, (16, 16), cur_text, font_big)
 
