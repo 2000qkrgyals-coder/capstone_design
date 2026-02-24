@@ -74,7 +74,7 @@ def _load_font(size: int):
         except:
             continue
     # 모든 경로 실패 시 기본 폰트 (사이즈는 반영 안됨)
-    return ImageFont.load_default()
+    
 
 def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
     out = img.copy()
