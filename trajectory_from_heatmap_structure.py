@@ -13,7 +13,7 @@ st.write("화면 테스트")
 # Files
 # =============================
 BASE_DIR = Path(__file__).resolve().parent
-NPZ_PATH = BASE_DIR / "trajectory_frames_1min.npz"
+NPZ_PATH = BASE_DIR / "trajectory_day_rssi_1min.npz"
 FLOORPLAN_PATH = BASE_DIR / "ICN_Airport_3F.png"
 
 # =============================
@@ -235,4 +235,5 @@ left, right = st.columns([8, 1])
 with left:
     st.image(img_bytes, use_container_width=True)
 with right:
+
     st.empty()
