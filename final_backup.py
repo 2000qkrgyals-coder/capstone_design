@@ -60,24 +60,20 @@ def load_floorplan_scaled(path: Path, max_width: int):
     new_h = int(round(H * scale))
     return img.resize((new_w, new_h), resample=Image.BILINEAR), scale
 
+# ----------------------------
+# 폰트 로딩 (size 반영 가능)
 def _load_font(size: int):
-    """
-    항상 지정된 TTF 폰트를 불러오도록.
-    Windows / macOS / Linux 경로 예시 포함.
-    fallback 시 ImageFont.load_default() 사용.
-    """
-    # OS별 폰트 경로
     font_paths = [
         "C:/Windows/Fonts/arial.ttf",                 # Windows
         "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" # Linux
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", # Linux
     ]
     for path in font_paths:
         try:
             return ImageFont.truetype(path, size)
         except:
             continue
-    # 폰트 로드 실패 시 기본 폰트
+    # 모든 경로 실패 시 기본 폰트 (사이즈는 반영 안됨)
     return ImageFont.load_default()
 
 def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
