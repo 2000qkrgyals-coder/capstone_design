@@ -61,10 +61,54 @@ def load_floorplan_scaled(path: Path, max_width: int):
     return img.resize((new_w, new_h), resample=Image.BILINEAR), scale
 
 def _load_font(size: int):
-    try:
-        return ImageFont.truetype("arial.ttf", size)
-    except:
-        return ImageFont.load_default()
+    """
+    안정적으로 TTF 폰트를 불러오는 함수.
+    OS별 경로 지정, 실패 시 기본 폰트 fallback
+    """
+    # Windows
+    for path in [
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/ARIAL.TTF",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+    ]:
+        try:
+            return ImageFont.truetype(path, size)
+        except:
+            continue
+    # fallback
+    return ImageFont.load_default()
+
+def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
+    out = img.copy()
+    d = ImageDraw.Draw(out, "RGBA")
+
+    # ✅ 폰트 크기 조정
+    font_big = _load_font(44)  # 왼쪽 위 현재 구간 글씨
+    font_mid = _load_font(32)  # 오른쪽 위 START / END 글씨
+
+    # 왼쪽 위: 현재 구간
+    draw_badge(d, (16, 16), cur_text, font_big)
+
+    # 오른쪽 위: START / END
+    W, _ = out.size
+    start_label = f"START {start_text}"
+    end_label = f"END {end_text}"
+
+    # 기존처럼 박스 크기 유지
+    bbox1 = d.textbbox((0, 0), start_label, font=font_mid)
+    bbox2 = d.textbbox((0, 0), end_label, font=font_mid)
+    pad_x, pad_y = 14, 8
+    w1 = (bbox1[2] - bbox1[0]) + pad_x * 2
+    w2 = (bbox2[2] - bbox2[0]) + pad_x * 2
+
+    x_start = max(16, W - w1 - 16)
+    x_end = max(16, W - w2 - 16)
+
+    draw_badge(d, (x_start, 16), start_label, font_mid, pad=(pad_x, pad_y))
+    draw_badge(d, (x_end, 16 + 44), end_label, font_mid, pad=(pad_x, pad_y))
+
+    return out
 
 def draw_badge(d, xy, text, font, pad=(24, 16), radius=16):  # 박스 크기 확대
     x, y = xy
