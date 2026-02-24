@@ -84,11 +84,11 @@ def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_tex
     d = ImageDraw.Draw(out, "RGBA")
 
     # ✅ 폰트 크기 조정
-    font_big = _load_font(44)  # 왼쪽 위 현재 구간 글씨
-    font_mid = _load_font(32)  # 오른쪽 위 START / END 글씨
+    font_big = _load_font(28)  # 왼쪽 위 현재 구간 글씨
+    font_mid = _load_font(22)  # 오른쪽 위 START / END 글씨
 
     # 왼쪽 위: 현재 구간
-    draw_badge(d, (16, 16), cur_text, font_big)
+    draw_badge(d, (8, 8), cur_text, font_big)
 
     # 오른쪽 위: START / END
     W, _ = out.size
