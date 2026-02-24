@@ -63,51 +63,14 @@ def load_floorplan_scaled(path: Path, max_width: int):
 # ----------------------------
 # 폰트 로딩 (size 반영 가능)
 def _load_font(size: int):
-    font_paths = [
-        "C:/Windows/Fonts/Arial.ttf",                 # Windows
-        "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", # Linux
-    ]
-    for path in font_paths:
+    for name in ["arial.ttf", "AppleGothic.ttf", "DejaVuSans.ttf"]:
         try:
-            return ImageFont.truetype(path, size)
+            return ImageFont.truetype(name, size)
         except:
-            continue
-    # 모든 경로 실패 시 기본 폰트 (사이즈는 반영 안됨)
-    
+            pass
+    return ImageFont.load_default()
 
-def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
-    out = img.copy()
-    d = ImageDraw.Draw(out, "RGBA")
-
-    # ✅ 폰트 크기 조정
-    font_big = _load_font(10)  # 왼쪽 위 현재 구간 글씨
-    font_mid = _load_font(10)  # 오른쪽 위 START / END 글씨
-
-    # 왼쪽 위: 현재 구간
-    draw_badge(d, (8, 8), cur_text, font_big)
-
-    # 오른쪽 위: START / END
-    W, _ = out.size
-    start_label = f"START {start_text}"
-    end_label = f"END {end_text}"
-
-    # 기존처럼 박스 크기 유지
-    bbox1 = d.textbbox((0, 0), start_label, font=font_mid)
-    bbox2 = d.textbbox((0, 0), end_label, font=font_mid)
-    pad_x, pad_y = 14, 8
-    w1 = (bbox1[2] - bbox1[0]) + pad_x * 2
-    w2 = (bbox2[2] - bbox2[0]) + pad_x * 2
-
-    x_start = max(16, W - w1 - 16)
-    x_end = max(16, W - w2 - 16)
-
-    draw_badge(d, (x_start, 16), start_label, font_mid, pad=(pad_x, pad_y))
-    draw_badge(d, (x_end, 16 + 44), end_label, font_mid, pad=(pad_x, pad_y))
-
-    return out
-
-def draw_badge(d, xy, text, font, pad=(24, 16), radius=16):  # 박스 크기 확대
+def draw_badge(d: ImageDraw.ImageDraw, xy, text, font, pad=(14, 8), radius=12):
     x, y = xy
     pad_x, pad_y = pad
     bbox = d.textbbox((0, 0), text, font=font)
@@ -116,32 +79,34 @@ def draw_badge(d, xy, text, font, pad=(24, 16), radius=16):  # 박스 크기 확
     d.rounded_rectangle(box, radius=radius, fill=(0, 0, 0, 150))
     d.text((x + pad_x, y + pad_y), text, fill=(255, 255, 255, 255), font=font)
 
-def draw_time_overlays(img, cur_text, start_text, end_text):
+def draw_time_overlays(img: Image.Image, cur_text: str, start_text: str, end_text: str):
     out = img.copy()
     d = ImageDraw.Draw(out, "RGBA")
 
-    font_big = _load_font(60)
-    font_mid = _load_font(60)
+    font_big = _load_font(28)
+    font_mid = _load_font(22)
 
+    # 왼쪽 위: 현재 구간
     draw_badge(d, (16, 16), cur_text, font_big)
 
+    # 오른쪽 위: START / END (실제 HH:MM)
     W, _ = out.size
     start_label = f"START {start_text}"
     end_label = f"END {end_text}"
 
     bbox1 = d.textbbox((0, 0), start_label, font=font_mid)
     bbox2 = d.textbbox((0, 0), end_label, font=font_mid)
-
-    w1 = (bbox1[2] - bbox1[0]) + 28
-    w2 = (bbox2[2] - bbox2[0]) + 28
+    w1 = (bbox1[2] - bbox1[0]) + 14 * 2
+    w2 = (bbox2[2] - bbox2[0]) + 14 * 2
 
     x_start = max(16, W - w1 - 16)
     x_end = max(16, W - w2 - 16)
 
     draw_badge(d, (x_start, 16), start_label, font_mid)
-    draw_badge(d, (x_end, 60), end_label, font_mid)
+    draw_badge(d, (x_end, 16 + 44), end_label, font_mid)
 
     return out
+
 
 def to_jpeg_bytes(img_rgb, quality=80):
     buf = io.BytesIO()
