@@ -5,3 +5,6 @@ pillow
 matplotlib
 scipy
 pandas
+scikit-learn
+joblib
+plotly
