@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from PIL import Image
@@ -132,7 +133,7 @@ if df is not None and coords is not None:
         
         if selected_areas:
             # ---------------------------------------------------------
-            # [신규 추가] 지표 기반 정량 분석 리포트 (1, 2, 4번 지표)
+            # [기존 유지] 지표 기반 정량 분석 리포트 (1, 2, 4번 지표)
             # ---------------------------------------------------------
             st.subheader("📋 실시간 핵심 운영 지표 (정량 분석)")
             
@@ -181,7 +182,7 @@ if df is not None and coords is not None:
             st.plotly_chart(fig_bubble, use_container_width=True)
             st.divider()
 
-            # 1. 점유율 상세 (기존 로직)
+            # 1. 점유율 상세 (기존 유지)
             st.subheader("🌐 공항 전체 대비 점유 비중")
             total_now = total_flow.get(current_time_min, 1)
             selected_now_vals = pivot_df.loc[current_time_min, selected_areas]
@@ -203,7 +204,7 @@ if df is not None and coords is not None:
 
             st.divider()
 
-            # 2. 시간대별 혼잡도 추이 (기존 로직)
+            # 2. 시간대별 혼잡도 추이 (기존 유지)
             st.subheader("📈 시간대별 혼잡도 추이 (10분 이동평균 적용)")
             fig_compare = go.Figure()
             for area in selected_areas:
@@ -215,7 +216,7 @@ if df is not None and coords is not None:
                                                  ticktext=[f"{h:02d}:00" for h in range(0, 25, 2)]))
             st.plotly_chart(fig_compare, use_container_width=True)
 
-            # 3. 통계 기반 관제 인사이트 (기존 로직)
+            # 3. 통계 기반 관제 인사이트 (기존 유지)
             st.divider()
             st.subheader("🧪 통계 기반 관제 인사이트")
             c_ins1, c_ins2, c_ins3 = st.columns(3)
@@ -230,18 +231,18 @@ if df is not None and coords is not None:
             with c_ins2:
                 st.write("**⚡ 현재 유입 가속도 (명/분)**")
                 for area in selected_areas:
-                    accel = pivot_df[area].diff().iloc[current_time_min]
-                    status = "🚀 급증" if accel > 1.5 else ("➡️ 안정" if accel > -1.5 else "⬇️ 감소")
-                    st.write(f"- {area}: {status} ({accel:.2f})")
+                    accel_val = pivot_df[area].diff().iloc[current_time_min]
+                    status = "🚀 급증" if accel_val > 1.5 else ("➡️ 안정" if accel_val > -1.5 else "⬇️ 감소")
+                    st.write(f"- {area}: {status} ({accel_val:.2f})")
 
             with c_ins3:
                 st.write("**🔗 구역 간 이동 유사성(상관관계)**")
                 if len(selected_areas) >= 2:
-                    corr = pivot_df[selected_areas].corr().iloc[0, 1]
-                    st.write(f"지표: **{corr:.2f}**")
+                    corr_val = pivot_df[selected_areas].corr().iloc[0, 1]
+                    st.write(f"지표: **{corr_val:.2f}**")
                     st.caption("두 구역의 흐름이 얼마나 동기화되어 있는지 나타냅니다.")
 
-            # --- [핵심 업데이트] 4. 영역별 피크 타임 상세 분석 (기존 로직) ---
+            # 4. 영역별 피크 타임 상세 분석 (기존 유지)
             st.divider()
             st.subheader("🏔️ 영역별 시간대 피크(Peak) 시각 및 상세 분석")
             
@@ -259,11 +260,11 @@ if df is not None and coords is not None:
                 for slot_name, (start, end) in time_slots.items():
                     slot_series = pivot_df[area].iloc[start:end]
                     if not slot_series.empty:
-                        max_val = slot_series.max()
-                        max_idx = slot_series.idxmax()
-                        p_hour = max_idx // 60
-                        p_min = max_idx % 60
-                        area_data[slot_name] = f"{p_hour:02d}:{p_min:02d} ({max_val:.1f}명)"
+                        max_v = slot_series.max()
+                        max_i = slot_series.idxmax()
+                        p_h = max_i // 60
+                        p_m = max_i % 60
+                        area_data[slot_name] = f"{p_h:02d}:{p_m:02d} ({max_v:.1f}명)"
                     else:
                         area_data[slot_name] = "-"
                 peak_report_data.append(area_data)
@@ -271,7 +272,7 @@ if df is not None and coords is not None:
             st.table(pd.DataFrame(peak_report_data))
             st.caption("💡 각 구역이 시간대별로 가장 붐볐던 구체적인 시각과 당시 인원을 표시합니다.")
 
-            # 시간대별 인원 밀도 히트맵 (기존 로직)
+            # 시간대별 인원 밀도 히트맵 (기존 유지)
             st.write("")
             st.write("**🎯 시간대별 혼잡 밀도 히트맵 (Heatmap)**")
             heatmap_df = pivot_df[selected_areas].copy()
@@ -285,22 +286,88 @@ if df is not None and coords is not None:
             fig_heat.update_layout(height=400)
             st.plotly_chart(fig_heat, use_container_width=True)
 
-            # 5. 병목 위험도 예측 및 강도 분석 (기존 로직)
+            # 5. 병목 위험도 예측 및 강도 분석 (기존 유지)
             st.divider()
             st.subheader("⚠️ 실시간 위험 알림 및 강도 분석")
             for area in selected_areas:
-                diff = pivot_df[area].iloc[current_time_min] - pivot_df[area].iloc[max(0, current_time_min-10)]
-                if diff > 20:
-                    st.error(f"🔥 {area} 구역 급증 경고: 10분 전 대비 {diff:.1f}명 증가!")
+                diff_val = pivot_df[area].iloc[current_time_min] - pivot_df[area].iloc[max(0, current_time_min-10)]
+                if diff_val > 20:
+                    st.error(f"🔥 {area} 구역 급증 경고: 10분 전 대비 {diff_val:.1f}명 증가!")
             
             fig_diff = go.Figure()
             for area in selected_areas:
                 diff_series = pivot_df[area].diff(periods=10).fillna(0)
                 fig_diff.add_trace(go.Scatter(x=diff_series.index, y=diff_series, name=f"{area} 유입강도", fill='tozeroy'))
             fig_diff.update_layout(template="plotly_dark", height=400, title="단기 유입/유출 변화량(10분 단위)",
-                                    xaxis=dict(tickmode='array', tickvals=list(range(0, 1441, 120)), 
+                                   xaxis=dict(tickmode='array', tickvals=list(range(0, 1441, 120)), 
                                                ticktext=[f"{h:02d}:00" for h in range(0, 25, 2)]))
             st.plotly_chart(fig_diff, use_container_width=True)
+
+            # ---------------------------------------------------------
+            # [신규 추가] 6. 보안검색대(IM) 특화 상관관계 분석
+            # ---------------------------------------------------------
+            st.divider()
+            st.subheader("🛡️ 보안검색대(IM) 핵심 관문 상관관계 리포트")
+            
+            # IM 구역 정의 (데이터에 존재하는지 확인)
+            im_areas = [area for area in ['IM1', 'IM2', 'IM3', 'IM4', 'IM5'] if area in pivot_df.columns]
+            
+            if len(im_areas) >= 1:
+                col_graph, col_stats = st.columns([1.5, 1])
+                
+                with col_graph:
+                    st.write("**🔗 보안검색대-터미널 흐름 동기화**")
+                    # IM 구역 인원 합계
+                    im_sum = pivot_df[im_areas].sum(axis=1)
+                    im_correlation = im_sum.corr(total_flow)
+                    
+                    fig_im_sync = go.Figure()
+                    # 터미널 전체 흐름 (배경)
+                    fig_im_sync.add_trace(go.Scatter(
+                        x=total_flow.index, y=total_flow, 
+                        name="전체 터미널", line=dict(color='gray', width=1), opacity=0.4
+                    ))
+                    # 검색대 합계 흐름 (강조)
+                    fig_im_sync.add_trace(go.Scatter(
+                        x=im_sum.index, y=im_sum, 
+                        name="보안검색대(IM) 합계", line=dict(color='#00CC96', width=3)
+                    ))
+                    
+                    fig_im_sync.update_layout(
+                        template="plotly_dark", height=380, 
+                        title=f"터미널 전체 vs 보안검색대 흐름 (상관계수: {im_correlation:.2f})",
+                        margin=dict(l=20, r=20, t=40, b=20),
+                        xaxis=dict(tickmode='array', tickvals=list(range(0, 1441, 120)), 
+                                   ticktext=[f"{h:02d}:00" for h in range(0, 25, 2)])
+                    )
+                    st.plotly_chart(fig_im_sync, use_container_width=True)
+
+                with col_stats:
+                    st.write("**📊 검색대 운영 효율 지표**")
+                    curr_im_total = im_sum.iloc[current_time_min]
+                    curr_total_all = total_flow.iloc[current_time_min] if total_flow.iloc[current_time_min] > 0 else 1
+                    
+                    # 지표 1: 전체 대비 검색대 점유율 (검색대 병목 수준 확인)
+                    im_ratio_val = (curr_im_total / curr_total_all) * 100
+                    st.metric("보안검색대 점유 비중", f"{im_ratio_val:.1f}%", 
+                              help="현재 공항 전체 인원 중 검색 구역에 머물고 있는 비율입니다.")
+                    
+                    # 지표 2: 라인 간 불균형 (IM1, IM2 존재 시)
+                    if 'IM1' in pivot_df.columns and 'IM2' in pivot_df.columns:
+                        v1 = pivot_df['IM1'].iloc[current_time_min]
+                        v2 = pivot_df['IM2'].iloc[current_time_min]
+                        line_diff = abs(v1 - v2)
+                        
+                        st.metric("IM1-IM2 라인 편차", f"{int(line_diff)} 명", 
+                                  delta="⚠️ 불균형" if line_diff > 15 else "안정", delta_color="inverse")
+                        
+                        line_corr = pivot_df['IM1'].corr(pivot_df['IM2'])
+                        st.write(f"라인 간 동기화 지수: **{line_corr:.2f}**")
+                    
+                    st.info("💡 **운영 인사이트:** 상관지수가 0.8 이상일 경우, 보안검색대가 전체 승객 수요 변화에 즉각적으로 대응하고 있음을 나타냅니다.")
+
+            else:
+                st.info("보안검색대(IM1, IM2 등) 데이터가 포함되어 있지 않아 특화 분석을 표시할 수 없습니다.")
 
         else:
             st.warning("분석할 구역을 선택해주세요.")
