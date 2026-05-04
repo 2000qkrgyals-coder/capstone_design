@@ -146,8 +146,8 @@ if df is not None and coords is not None:
                 curr_v = pivot_df[area].iloc[now_idx]
                 prev_v = pivot_df[area].iloc[prev_idx]
                 
-                # 1. 혼잡 지수 (임계치 80명 대비 비율)
-                c_idx = (curr_v / 80) * 100
+                # 1. 혼잡 지수 (임계치 100명 대비 비율)
+                c_idx = (curr_v / 100) * 100
                 # 2. 유입 가속도 (분당 변화량)
                 accel = (curr_v - prev_v) / 5
                 # 4. 불균형 지수 (전체 평균 대비 쏠림 정도)
