@@ -171,7 +171,7 @@ if df is not None and coords is not None:
             }).background_gradient(subset=['혼잡 지수(%)'], cmap='Reds', vmin=0, vmax=120)
               .background_gradient(subset=['유입 가속도(명/분)'], cmap='coolwarm'))
             
-            st.caption("※ 혼잡 지수: 80명 기준(100%) / 유입 가속도: 5분 전 대비 변화율 / 불균형 지수: 현재 전체 구역 평균 대비 배수")
+            st.caption("※ 혼잡 지수: 100명 기준(100%) / 유입 가속도: 5분 전 대비 변화율 / 불균형 지수: 현재 전체 구역 평균 대비 배수")
 
             # 지표 상관관계 시각화 (Bubble Chart)
             fig_bubble = px.scatter(metric_df, x="혼잡 지수(%)", y="유입 가속도(명/분)", 
