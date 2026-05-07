@@ -470,32 +470,29 @@ if df is not None and coords is not None:
                 st.caption(f"현재: {curr_people:.1f}명")
                 st.caption(f"10분 후 예상: {predicted_people_10m:.1f}명")
 
-# ---------------------------------------------------------
-# [신규 추가] 10. 인력 재배치 시뮬레이션 (Efficiency Dashboard)
-# ---------------------------------------------------------
-st.markdown("---")
-st.subheader("🔄 구역 간 인력 재배치 제안")
+        # ---------------------------------------------------------
+        # [신규 추가] 10. 인력 재배치 시뮬레이션 (Efficiency Dashboard)
+        # ---------------------------------------------------------
+        st.markdown("---")
+        st.subheader("🔄 구역 간 인력 재배치 제안")
 
-if len(selected_areas) >= 2:
-    # 가장 한가한 곳과 가장 바쁜 곳 찾기
-    area_stats = []
-    for a in selected_areas:
-        area_stats.append({
-            "area": a,
-            "val": pivot_df[a].iloc[now_idx],
-            "req": math.ceil(pivot_df[a].iloc[now_idx] / service_rate_per_counter)
-        })
+        if len(selected_areas) >= 2:
+            # 가장 한가한 곳과 가장 바쁜 곳 찾기
+            area_stats = []
+            for a in selected_areas:
+                area_stats.append({
+                    "area": a,
+                    "val": pivot_df[a].iloc[now_idx],
+                    "req": math.ceil(pivot_df[a].iloc[now_idx] / service_rate_per_counter)
+                })
     
-    stat_df = pd.DataFrame(area_stats).sort_values("val")
-    idle_area = stat_df.iloc[0]["area"]
-    busy_area = stat_df.iloc[-1]["area"]
+            stat_df = pd.DataFrame(area_stats).sort_values("val")
+            idle_area = stat_df.iloc[0]["area"]
+            busy_area = stat_df.iloc[-1]["area"]
     
-    if stat_df.iloc[-1]["val"] - stat_df.iloc[0]["val"] > 30: # 차이가 30명 이상일 때
-        st.info(f"💡 **재배치 알림**: 상대적으로 여유로운 **{idle_area}** 구역의 지원 인력을 혼잡한 **{busy_area}** 구역으로 전환 배치하여 운영 효율을 높일 수 있습니다.")
-
-
-
-                
+            if stat_df.iloc[-1]["val"] - stat_df.iloc[0]["val"] > 30: # 차이가 30명 이상일 때
+                st.info(f"💡 **재배치 알림**: 상대적으로 여유로운 **{idle_area}** 구역의 지원 인력을 혼잡한 **{busy_area}** 구역으로 전환 배치하여 운영 효율을 높일 수 있습니다.")
+    
         else:
             st.warning("분석할 구역을 선택해주세요.")
 else:
