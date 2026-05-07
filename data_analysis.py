@@ -396,27 +396,6 @@ if df is not None and coords is not None:
             with col_efficiency:
                 st.markdown("#### **👨‍✈️ 인력 최적화 및 운영 가이드**")
                 
-                # 보안검색대 스마트 분배 가이드 (IM1, IM2 기준)
-                if 'IM1' in pivot_df.columns and 'IM2' in pivot_df.columns:
-                    v1 = pivot_df['IM1'].iloc[now_idx]
-                    v2 = pivot_df['IM2'].iloc[now_idx]
-                    
-                    if abs(v1 - v2) > 20:
-                        heavy_im = "IM1" if v1 > v2 else "IM2"
-                        light_im = "IM2" if v1 > v2 else "IM1"
-                        st.info(f"💡 **분산 권고**: {heavy_im}에 인원이 쏠려있습니다. {light_im}로 승객 유도를 권장합니다.")
-                
-                # 카운터 개방 가이드 (가속도 기반 예측)
-                for area in selected_areas:
-                    accel_val = (pivot_df[area].iloc[now_idx] - pivot_df[area].iloc[prev_idx]) / 5
-                    if accel_val > 2.0: # 분당 2명 이상 급증 시
-                        st.error(f"📍 **카운터 추가 개방**: {area} 구역 유입 속도 급증! 추가 가동이 필요합니다.")
-                    elif accel_val < -2.0 and pivot_df[area].iloc[now_idx] < 30:
-                        st.write(f"🍃 **운영 효율화**: {area} 구역 수요 감소 중. 인력 재배치 고려 가능.")
-
-            with col_efficiency:
-                st.markdown("#### **👨‍✈️ 인력 최적화 및 운영 가이드**")
-                
                 # --- [고도화] 보안검색대(IM) 스마트 분배 가이드 ---
                 if 'IM1' in pivot_df.columns and 'IM2' in pivot_df.columns:
                     st.write("**🛡️ 보안검색대 실시간 분배 진단**")
