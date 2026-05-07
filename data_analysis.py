@@ -500,67 +500,74 @@ if df is not None and coords is not None:
                 )
             
                 # 5. 시각화 카드 출력
-                # --- [수정본] 글씨색 검정(Black) 반영 버전 ---
+                # --- [오류 완벽 방지] 5. 시각화 카드 출력 섹션 ---
                 st.divider()
                 cols_per_row = 4
+                
+                # 데이터프레임 행을 4개씩 나눕니다.
                 for i in range(0, len(edited_df), cols_per_row):
                     row_data = edited_df.iloc[i : i + cols_per_row]
                     cols = st.columns(cols_per_row)
+                    
                     for j, (idx, data) in enumerate(row_data.iterrows()):
                         with cols[j]:
-                            # 대기시간 계산
-                            capacity = data["현재 개방 카운터"] * service_rate
-                            curr_wait = (data["현재 인원"] / max(1, capacity)) * 10
-                            pred_wait = (data["10분 뒤 예측"] / max(1, capacity)) * 10
+                            # 1. 수치 계산
+                            capacity = max(1, data["현재 개방 카운터"] * service_rate)
+                            c_wait = (data["현재 인원"] / capacity) * 10
+                            p_wait = (data["10분 뒤 예측"] / capacity) * 10
                             
-                            # 상태별 색상 테마
-                            if curr_wait > wait_threshold or pred_wait > wait_threshold:
-                                main_color, bg_color, status_text = "#FF3131", "rgba(255, 49, 49, 0.2)", "🚨 인력 즉시 증설"
+                            # 2. 색상 및 상태 결정
+                            if c_wait > wait_threshold or p_wait > wait_threshold:
+                                m_color, b_color, s_text = "#FF3131", "rgba(255, 49, 49, 0.2)", "🚨 인력 즉시 증설"
                             elif data["현재 개방 카운터"] < data["AI 권장"]:
-                                main_color, bg_color, status_text = "#FFAC1C", "rgba(255, 172, 28, 0.2)", "⚠️ 보충 권장"
+                                m_color, b_color, s_text = "#FFAC1C", "rgba(255, 172, 28, 0.2)", "⚠️ 보충 권장"
                             else:
-                                main_color, bg_color, status_text = "#00FFFF", "rgba(0, 255, 255, 0.15)", "✅ 운영 적정"
+                                m_color, b_color, s_text = "#00FFFF", "rgba(0, 255, 255, 0.15)", "✅ 운영 적정"
                 
-                            st.markdown(f"""
+                            # 3. HTML 렌더링 (글씨색 검정 강제 지정)
+                            card_html = f"""
                             <div style="
                                 padding: 20px; 
                                 border-radius: 15px; 
-                                border: 3px solid {main_color}; 
-                                background-color: {bg_color}; 
-                                min-height: 240px; 
-                                text-align: center; 
-                                box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+                                border: 3px solid {m_color}; 
+                                background-color: {b_color}; 
+                                text-align: center;
+                                box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+                                margin-bottom: 10px;
                             ">
-                                <div style="font-size: 22px; font-weight: 900; color: #000000; margin-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 5px;">
+                                <div style="font-size: 22px; font-weight: 900; color: #000000; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 5px; margin-bottom: 10px;">
                                     {data['구역']} AREA
                                 </div>
                                 
                                 <div style="margin-bottom: 15px;">
-                                    <div style="font-size: 12px; color: #333333; font-weight: 600;">현재 / 10분 뒤 인원</div>
+                                    <div style="font-size: 12px; color: #333333; font-weight: 700;">현재 / 10분 뒤 인원</div>
                                     <div style="font-size: 18px; font-weight: 800; color: #000000;">
-                                        {data['현재 인원']:.1f} <span style="color:{main_color};">→</span> {data['10분 뒤 예측']:.1f}명
+                                        {data['현재 인원']:.1f} <span style="color:{m_color};">→</span> {data['10분 뒤 예측']:.1f}명
                                     </div>
                                 </div>
                                 
-                                <div style="background: rgba(255,255,255,0.4); padding: 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1);">
-                                    <div style="font-size: 12px; color: #333333; font-weight: 600;">예상 대기시간</div>
-                                    <div style="font-size: 28px; font-weight: 900; color: #000000; letter-spacing: -1px;">
-                                        {curr_wait:.1f} / {pred_wait:.1f}<span style="font-size: 14px;">분</span>
+                                <div style="background: rgba(255,255,255,0.4); padding: 10px; border-radius: 10px;">
+                                    <div style="font-size: 12px; color: #333333; font-weight: 700;">예상 대기시간</div>
+                                    <div style="font-size: 26px; font-weight: 900; color: #000000;">
+                                        {c_wait:.1f} / {p_wait:.1f}<span style="font-size: 14px;">분</span>
                                     </div>
                                 </div>
                                 
                                 <div style="font-size: 14px; margin-top: 15px; font-weight: 800; color: #000000;">
-                                    {status_text}
+                                    {s_text}
                                 </div>
                             </div>
-                            """, unsafe_allow_html=True)
+                            """
+                            st.markdown(card_html, unsafe_allow_html=True)
                             
-                            # 하단 가이드 텍스트
+                            # 하단 가이드 문구
                             if data["현재 개방 카운터"] < data["AI 권장"]:
-                                st.markdown(f"<p style='color:#FF8C00; font-size:12px; font-weight:700; text-align:center;'>▲ AI 권장보다 {int(data['AI 권장'] - data['현재 개방 카운터'])}개 부족</p>", unsafe_allow_html=True)
+                                diff = int(data["AI 권장"] - data["현재 개방 카운터"])
+                                st.markdown(f"<p style='color:#E67E22; font-size:12px; font-weight:800; text-align:center;'>▲ {diff}개 부족</p>", unsafe_allow_html=True)
                             elif data["현재 개방 카운터"] > data["AI 권장"] + 1:
-                                st.markdown(f"<p style='color:#008000; font-size:12px; font-weight:700; text-align:center;'>▼ {int(data['현재 개방 카운터'] - data['AI 권장'])}개 감축 가능</p>", unsafe_allow_html=True)
-                            
+                                diff = int(data["현재 개방 카운터"] - data["AI 권장"])
+                                st.markdown(f"<p style='color:#27AE60; font-size:12px; font-weight:800; text-align:center;'>▼ {diff}개 여유</p>", unsafe_allow_html=True)
+                                
                 # 6. 인력 재배치 제안
                 st.divider()
                 surplus_areas = edited_df[edited_df["현재 개방 카운터"] > edited_df["AI 권장"]]["구역"].tolist()
