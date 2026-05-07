@@ -38,6 +38,11 @@ in_hour = c1.number_input("시 (0~23)", 0, 23, 10)
 in_min = c2.number_input("분 (0~59)", 0, 59, 0)
 current_time_min = in_hour * 60 + in_min
 
+# --- [추가] 공통 운영 변수 설정 (에러 방지) ---
+with st.sidebar.expander("⚙️ 기본 운영 파라미터"):
+    service_rate = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
+    wait_threshold = st.slider("대기시간 경고 기준 (분)", 5, 30, 15)
+
 selected_date = st.sidebar.date_input("날짜 선택", value=pd.to_datetime("2026-09-14"))
 traffic_file = f"area_count_time_{selected_date.month:02d}_{selected_date.day:02d}.csv"
 area_coord_file = "terminal_areas_grouped_2.csv"
@@ -478,12 +483,14 @@ if df is not None and coords is not None:
                 prev_idx_dynamic = max(0, current_idx - 1)
             
                 # 2. 운영 설정값 및 시뮬레이션 변수
+                               # --- 하단 9번 섹션 수정 ---
                 with st.expander("⚙️ 운영 최적화 알고리즘 및 시뮬레이션 설정", expanded=True):
                     c_set1, c_set2, c_set3 = st.columns(3)
                     with c_set1:
-                        service_rate = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
+                        # 이미 위에서 선언했으므로 표시만 하거나, 여기서 값을 입력받으려면 위쪽 선언을 지워야 합니다.
+                        st.info(f"현재 처리 용량: {service_rate}명") 
                     with c_set2:
-                        wait_threshold = st.slider("대기시간 경고 기준 (분)", 5, 30, 15)
+                        st.info(f"현재 경고 기준: {wait_threshold}분")
                     with c_set3:
                         default_open = st.number_input("구역별 기본 개방 카운터 (초기값)", 1, 20, 3)
             
