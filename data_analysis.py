@@ -497,77 +497,77 @@ if df is not None and coords is not None:
                     use_container_width=True
                 )
             # --- [수정본] 시인성 강화 버전 카드 배치 ---
-        st.divider()
-        cols_per_row = 4
-        rows = [edited_df.iloc[i:i + cols_per_row] for i in range(0, len(edited_df), cols_per_row)]
-        
-        for row_data in rows:
-            cols = st.columns(cols_per_row)
-            for i, (idx, data) in enumerate(row_data.iterrows()):
-                with cols[i]:
-                    # 대기시간 계산
-                    capacity = data["현재 개방 카운터"] * service_rate
-                    curr_wait = (data["현재 인원"] / max(1, capacity)) * 10
-                    pred_wait = (data["10분 뒤 예측"] / max(1, capacity)) * 10
-                    
-                    # 색상 논리 (시인성 중심)
-                    # 1. 심각 (레드): 대기시간 초과
-                    if curr_wait > wait_threshold or pred_wait > wait_threshold:
-                        main_color = "#FF3131"  # 더 밝고 선명한 레드
-                        bg_color = "rgba(255, 49, 49, 0.15)"
-                        status_text = "🚨 인력 즉시 증설"
-                    # 2. 주의 (오렌지): 권장보다 부족
-                    elif data["현재 개방 카운터"] < data["AI 권장"]:
-                        main_color = "#FFAC1C"  # 선명한 오렌지
-                        bg_color = "rgba(255, 172, 28, 0.1)"
-                        status_text = "⚠️ 보충 권장"
-                    # 3. 정상 (민트/화이트): 최적 상태
-                    else:
-                        main_color = "#00FFFF"  # 형광 사이언 (검은 배경에서 가장 잘 보임)
-                        bg_color = "rgba(0, 255, 255, 0.05)"
-                        status_text = "✅ 운영 적정"
-        
-                    st.markdown(f"""
-                    <div style="
-                        padding: 20px; 
-                        border-radius: 15px; 
-                        border: 2px solid {main_color}; 
-                        background-color: {bg_color}; 
-                        min-height: 240px; 
-                        text-align: center;
-                        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-                    ">
-                        <div style="font-size: 24px; font-weight: 900; color: #FFFFFF; margin-bottom: 10px; border-bottom: 1px solid {main_color}44; pb-2;">
-                            {data['구역']} AREA
-                        </div>
+            st.divider()
+            cols_per_row = 4
+            rows = [edited_df.iloc[i:i + cols_per_row] for i in range(0, len(edited_df), cols_per_row)]
+            
+            for row_data in rows:
+                cols = st.columns(cols_per_row)
+                for i, (idx, data) in enumerate(row_data.iterrows()):
+                    with cols[i]:
+                        # 대기시간 계산
+                        capacity = data["현재 개방 카운터"] * service_rate
+                        curr_wait = (data["현재 인원"] / max(1, capacity)) * 10
+                        pred_wait = (data["10분 뒤 예측"] / max(1, capacity)) * 10
                         
-                        <div style="margin-bottom: 15px;">
-                            <div style="font-size: 13px; color: #E0E0E0; font-weight: 400;">현재 / 10분 뒤 인원</div>
-                            <div style="font-size: 20px; font-weight: 700; color: #FFFFFF;">
-                                {data['현재 인원']:.1f} <span style="color:{main_color};">→</span> {data['10분 뒤 예측']:.1f}명
+                        # 색상 논리 (시인성 중심)
+                        # 1. 심각 (레드): 대기시간 초과
+                        if curr_wait > wait_threshold or pred_wait > wait_threshold:
+                            main_color = "#FF3131"  # 더 밝고 선명한 레드
+                            bg_color = "rgba(255, 49, 49, 0.15)"
+                            status_text = "🚨 인력 즉시 증설"
+                        # 2. 주의 (오렌지): 권장보다 부족
+                        elif data["현재 개방 카운터"] < data["AI 권장"]:
+                            main_color = "#FFAC1C"  # 선명한 오렌지
+                            bg_color = "rgba(255, 172, 28, 0.1)"
+                            status_text = "⚠️ 보충 권장"
+                        # 3. 정상 (민트/화이트): 최적 상태
+                        else:
+                            main_color = "#00FFFF"  # 형광 사이언 (검은 배경에서 가장 잘 보임)
+                            bg_color = "rgba(0, 255, 255, 0.05)"
+                            status_text = "✅ 운영 적정"
+            
+                        st.markdown(f"""
+                        <div style="
+                            padding: 20px; 
+                            border-radius: 15px; 
+                            border: 2px solid {main_color}; 
+                            background-color: {bg_color}; 
+                            min-height: 240px; 
+                            text-align: center;
+                            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+                        ">
+                            <div style="font-size: 24px; font-weight: 900; color: #FFFFFF; margin-bottom: 10px; border-bottom: 1px solid {main_color}44; pb-2;">
+                                {data['구역']} AREA
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="font-size: 13px; color: #E0E0E0; font-weight: 400;">현재 / 10분 뒤 인원</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #FFFFFF;">
+                                    {data['현재 인원']:.1f} <span style="color:{main_color};">→</span> {data['10분 뒤 예측']:.1f}명
+                                </div>
+                            </div>
+                            
+                            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px;">
+                                <div style="font-size: 13px; color: #E0E0E0;">예상 대기시간</div>
+                                <div style="font-size: 30px; font-weight: 900; color: {main_color}; letter-spacing: -1px;">
+                                    {curr_wait:.1f} / {pred_wait:.1f}<span style="font-size: 16px;">분</span>
+                                </div>
+                            </div>
+                            
+                            <div style="font-size: 14px; margin-top: 15px; font-weight: 800; color: {main_color}; text-transform: uppercase;">
+                                {status_text}
                             </div>
                         </div>
+                        """, unsafe_allow_html=True)
                         
-                        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px;">
-                            <div style="font-size: 13px; color: #E0E0E0;">예상 대기시간</div>
-                            <div style="font-size: 30px; font-weight: 900; color: {main_color}; letter-spacing: -1px;">
-                                {curr_wait:.1f} / {pred_wait:.1f}<span style="font-size: 16px;">분</span>
-                            </div>
-                        </div>
-                        
-                        <div style="font-size: 14px; margin-top: 15px; font-weight: 800; color: {main_color}; text-transform: uppercase;">
-                            {status_text}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        # 하단 텍스트 가독성 보정 (st.caption 대신 st.markdown 사용)
+                        if data["현재 개방 카운터"] < data["AI 권장"]:
+                            st.markdown(f"<p style='color:#FFAC1C; font-size:13px; font-weight:600; text-align:center;'>▲ AI 권장보다 {int(data['AI 권장'] - data['현재 개방 카운터'])}개 더 필요</p>", unsafe_allow_html=True)
+                        elif data["현재 개방 카운터"] > data["AI 권장"] + 1:
+                            st.markdown(f"<p style='color:#00FF7F; font-size:13px; font-weight:600; text-align:center;'>▼ {int(data['현재 개방 카운터'] - data['AI 권장'])}개 감축 가능</p>", unsafe_allow_html=True)
+                        st.write("")
                     
-                    # 하단 텍스트 가독성 보정 (st.caption 대신 st.markdown 사용)
-                    if data["현재 개방 카운터"] < data["AI 권장"]:
-                        st.markdown(f"<p style='color:#FFAC1C; font-size:13px; font-weight:600; text-align:center;'>▲ AI 권장보다 {int(data['AI 권장'] - data['현재 개방 카운터'])}개 더 필요</p>", unsafe_allow_html=True)
-                    elif data["현재 개방 카운터"] > data["AI 권장"] + 1:
-                        st.markdown(f"<p style='color:#00FF7F; font-size:13px; font-weight:600; text-align:center;'>▼ {int(data['현재 개방 카운터'] - data['AI 권장'])}개 감축 가능</p>", unsafe_allow_html=True)
-                    st.write("")
-                
                 # 6. 스마트 인력 재배치 제안 (최종 요약)
                 st.divider()
                 surplus_areas = edited_df[edited_df["현재 개방 카운터"] > edited_df["AI 권장"]]["구역"].tolist()
