@@ -421,16 +421,17 @@ if df is not None and coords is not None:
                 
             with evac_col1:
                 emergency_area = st.selectbox("사고 발생 구역 가정", selected_areas)
-                 if st.button("🚨 비상 대피 시나리오 가동"):
+                if st.button("🚨 비상 대피 시나리오 가동"):
                     st.error(f"**{emergency_area} 구역 비상 상황 전파!**")
                     st.write(f"1. {emergency_area} 인근 승객 최단거리 대피 유도")
-                     st.write(f"2. {emergency_area} 진입 셔터 폐쇄 및 우회 경로 확보")
+                    st.write(f"2. {emergency_area} 진입 셔터 폐쇄 및 우회 경로 확보")
                 
-             with evac_col2:
-                 # 사고 구역 제외 혼잡도 재계산 시각화 (예시 히트맵)
-                  st.caption("사고 발생 시 주변 구역 전이 혼잡도 예측 모델 (Simulation)")
-                 sim_data = pivot_df[selected_areas].iloc[now_idx:now_idx+6].copy() # 향후 60분 예측 가정
-                 st.line_chart(sim_data)
+            with evac_col2:
+                # 사고 구역 제외 혼잡도 재계산 시각화 (예시 히트맵)
+                st.caption("사고 발생 시 주변 구역 전이 혼잡도 예측 모델 (Simulation)")
+                sim_data = pivot_df[selected_areas].iloc[now_idx:now_idx+6].copy() # 향후 60분 예측 가정
+                st.line_chart(sim_data)
+                
             # --- [최종 보정] 9. 실시간 전 구역 카운터 개방 최적화 및 시뮬레이터 ---
             st.divider()
             st.markdown("<h2 style='text-align: center; color: #00EEFF;'>👨‍✈️ Smart Resource Optimizer & Simulator</h2>", unsafe_allow_html=True)
