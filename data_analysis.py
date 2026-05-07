@@ -421,7 +421,7 @@ if df is not None and coords is not None:
             with evac_col1:
                 emergency_area = st.selectbox("사고 발생 구역 가정", selected_areas)
                 if st.button("🚨 비상 대피 시나리오 가동"):
-                    st.critical(f"**{emergency_area} 구역 비상 상황 전파!**")
+                    st.error(f"**{emergency_area} 구역 비상 상황 전파!**")
                     st.write(f"1. {emergency_area} 인근 승객 최단거리 대피 유도")
                     st.write(f"2. {emergency_area} 진입 셔터 폐쇄 및 우회 경로 확보")
             
