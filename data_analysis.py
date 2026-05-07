@@ -432,40 +432,45 @@ if df is not None and coords is not None:
                     sim_data = pivot_df[selected_areas].iloc[now_idx:now_idx+6].copy() # 향후 60분 예측 가정
                     st.line_chart(sim_data)
 
-            # --- [최종 통합본] 9. 실시간 전 구역 카운터 개방 최적화 및 시뮬레이터 ---
+            # --- [최종 보정] 9. 실시간 전 구역 카운터 개방 최적화 및 시뮬레이터 ---
             st.divider()
             st.markdown("<h2 style='text-align: center; color: #00EEFF;'>👨‍✈️ Smart Resource Optimizer & Simulator</h2>", unsafe_allow_html=True)
             
-            # 1. 시간 선택 기능 (데이터 인덱스 기반 자유 선택)
-            all_times = pivot_df.index.tolist()
-            selected_time = st.select_slider("🕒 분석 기준 시간 선택", options=all_times, value=all_times[now_idx])
-            current_idx = all_times.index(selected_time)
-            prev_idx_dynamic = max(0, current_idx - 1) # 5분 전 데이터 위치
-            
-            # 2. 운영 설정값 및 시뮬레이션 변수 (변수명: service_rate로 통일)
-            with st.expander("⚙️ 운영 최적화 알고리즘 및 시뮬레이션 설정", expanded=True):
-                c_set1, c_set2, c_set3 = st.columns(3)
-                with c_set1:
-                    service_rate = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
-                with c_set2:
-                    wait_threshold = st.slider("대기시간 경고 기준 (분)", 5, 30, 15)
-                with c_set3:
-                    default_open = st.number_input("구역별 기본 개방 카운터 (초기값)", 1, 20, 3)
-            
-            # 3. 데이터 추출 및 분석 로직 (A, I 구역 제외)
+            # A, I 구역 제외한 카운터 구역 추출
             counter_areas = [a for a in pivot_df.columns if len(a) == 1 and a not in ['A', 'I']]
             
             if counter_areas:
+                # 1. 시간 선택 기능
+                all_times = pivot_df.index.tolist()
+                
+                # 만약 기존 코드에서 now_idx가 정의 안 되어 있을 경우를 대비해 마지막 인덱스를 기본값으로 설정
+                try:
+                    default_idx = now_idx if 'now_idx' in locals() else len(all_times) - 1
+                except:
+                    default_idx = len(all_times) - 1
+                    
+                selected_time = st.select_slider("🕒 분석 기준 시간 선택", options=all_times, value=all_times[default_idx])
+                current_idx = all_times.index(selected_time)
+                prev_idx_dynamic = max(0, current_idx - 1)
+            
+                # 2. 운영 설정값 및 시뮬레이션 변수
+                with st.expander("⚙️ 운영 최적화 알고리즘 및 시뮬레이션 설정", expanded=True):
+                    c_set1, c_set2, c_set3 = st.columns(3)
+                    with c_set1:
+                        service_rate = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
+                    with c_set2:
+                        wait_threshold = st.slider("대기시간 경고 기준 (분)", 5, 30, 15)
+                    with c_set3:
+                        default_open = st.number_input("구역별 기본 개방 카운터 (초기값)", 1, 20, 3)
+            
+                # 3. 데이터 분석 로직
                 base_data = []
                 for area in counter_areas:
-                    curr_p = round(pivot_df[area].iloc[current_idx], 1)
-                    prev_p = pivot_df[area].iloc[prev_idx_dynamic]
+                    curr_p = round(float(pivot_df[area].iloc[current_idx]), 1)
+                    prev_p = float(pivot_df[area].iloc[prev_idx_dynamic])
                     
-                    # 유입 가속도 및 10분 뒤 예측 인원 계산
                     accel = (curr_p - prev_p) / 5
                     pred_p = max(0, round(curr_p + (accel * 10), 1))
-                    
-                    # AI 권장 카운터 (10분 뒤 예측 인원 기준)
                     req_c = math.ceil(pred_p / max(1, service_rate))
             
                     base_data.append({
@@ -479,9 +484,8 @@ if df is not None and coords is not None:
             
                 df_base = pd.DataFrame(base_data)
             
-                # 4. 관리자 시뮬레이션 입력 (가시성 높은 데이터 에디터)
+                # 4. 관리자 시뮬레이션 입력
                 st.markdown(f"### 📝 실시간 카운터 운영 시뮬레이션 <small>({selected_time} 기준)</small>", unsafe_allow_html=True)
-                st.info("💡 '현재 개방 카운터' 열의 숫자를 직접 수정하면 하단 카드의 대기시간이 즉시 재계산됩니다.")
                 
                 edited_df = st.data_editor(
                     df_base,
@@ -495,88 +499,53 @@ if df is not None and coords is not None:
                     use_container_width=True
                 )
             
-                # 5. 시인성 강화 버전 구역별 상세 카드 배치
+                # 5. 시각화 카드 출력
                 st.divider()
                 cols_per_row = 4
-                rows = [edited_df.iloc[i:i + cols_per_row] for i in range(0, len(edited_df), cols_per_row)]
-                
-                for row_data in rows:
+                for i in range(0, len(edited_df), cols_per_row):
+                    row_data = edited_df.iloc[i : i + cols_per_row]
                     cols = st.columns(cols_per_row)
-                    for i, (idx, data) in enumerate(row_data.iterrows()):
-                        with cols[i]:
-                            # 대기시간 계산 로직
+                    for j, (idx, data) in enumerate(row_data.iterrows()):
+                        with cols[j]:
                             capacity = data["현재 개방 카운터"] * service_rate
                             curr_wait = (data["현재 인원"] / max(1, capacity)) * 10
                             pred_wait = (data["10분 뒤 예측"] / max(1, capacity)) * 10
                             
-                            # 색상 및 상태 로직 (시인성 중심)
                             if curr_wait > wait_threshold or pred_wait > wait_threshold:
-                                main_color = "#FF3131"  # Bright Red
-                                bg_color = "rgba(255, 49, 49, 0.15)"
-                                status_text = "🚨 인력 즉시 증설"
+                                main_color, bg_color, status_text = "#FF3131", "rgba(255, 49, 49, 0.15)", "🚨 인력 즉시 증설"
                             elif data["현재 개방 카운터"] < data["AI 권장"]:
-                                main_color = "#FFAC1C"  # Bright Orange
-                                bg_color = "rgba(255, 172, 28, 0.1)"
-                                status_text = "⚠️ 보충 권장"
+                                main_color, bg_color, status_text = "#FFAC1C", "rgba(255, 172, 28, 0.1)", "⚠️ 보충 권장"
                             else:
-                                main_color = "#00FFFF"  # Neon Cyan
-                                bg_color = "rgba(0, 255, 255, 0.05)"
-                                status_text = "✅ 운영 적정"
+                                main_color, bg_color, status_text = "#00FFFF", "rgba(0, 255, 255, 0.05)", "✅ 운영 적정"
             
-                            # HTML 카드 렌더링
                             st.markdown(f"""
-                            <div style="
-                                padding: 20px; 
-                                border-radius: 15px; 
-                                border: 2px solid {main_color}; 
-                                background-color: {bg_color}; 
-                                min-height: 240px; 
-                                text-align: center;
-                                box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-                            ">
-                                <div style="font-size: 24px; font-weight: 900; color: #FFFFFF; margin-bottom: 10px; border-bottom: 1px solid {main_color}44; padding-bottom: 5px;">
-                                    {data['구역']} AREA
-                                </div>
-                                
+                            <div style="padding: 20px; border-radius: 15px; border: 2px solid {main_color}; background-color: {bg_color}; min-height: 240px; text-align: center; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">
+                                <div style="font-size: 22px; font-weight: 900; color: #FFFFFF; margin-bottom: 10px; border-bottom: 1px solid {main_color}44; padding-bottom: 5px;">{data['구역']} AREA</div>
                                 <div style="margin-bottom: 15px;">
-                                    <div style="font-size: 13px; color: #E0E0E0; font-weight: 400;">현재 / 10분 뒤 인원</div>
-                                    <div style="font-size: 20px; font-weight: 700; color: #FFFFFF;">
-                                        {data['현재 인원']:.1f} <span style="color:{main_color};">→</span> {data['10분 뒤 예측']:.1f}명
-                                    </div>
+                                    <div style="font-size: 12px; color: #E0E0E0;">현재 / 10분 뒤 인원</div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #FFFFFF;">{data['현재 인원']:.1f} <span style="color:{main_color};">→</span> {data['10분 뒤 예측']:.1f}명</div>
                                 </div>
-                                
                                 <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px;">
-                                    <div style="font-size: 13px; color: #E0E0E0;">예상 대기시간</div>
-                                    <div style="font-size: 30px; font-weight: 900; color: {main_color}; letter-spacing: -1px;">
-                                        {curr_wait:.1f} / {pred_wait:.1f}<span style="font-size: 16px;">분</span>
-                                    </div>
+                                    <div style="font-size: 12px; color: #E0E0E0;">예상 대기시간</div>
+                                    <div style="font-size: 28px; font-weight: 900; color: {main_color}; letter-spacing: -1px;">{curr_wait:.1f} / {pred_wait:.1f}<span style="font-size: 14px;">분</span></div>
                                 </div>
-                                
-                                <div style="font-size: 14px; margin-top: 15px; font-weight: 800; color: {main_color}; text-transform: uppercase;">
-                                    {status_text}
-                                </div>
+                                <div style="font-size: 13px; margin-top: 15px; font-weight: 800; color: {main_color};">{status_text}</div>
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            # 카드 하단 보조 안내 지표
                             if data["현재 개방 카운터"] < data["AI 권장"]:
-                                st.markdown(f"<p style='color:#FFAC1C; font-size:13px; font-weight:600; text-align:center; margin-top:5px;'>▲ AI 권장보다 {int(data['AI 권장'] - data['현재 개방 카운터'])}개 부족</p>", unsafe_allow_html=True)
+                                st.markdown(f"<p style='color:#FFAC1C; font-size:12px; font-weight:600; text-align:center;'>▲ AI 권장보다 {int(data['AI 권장'] - data['현재 개방 카운터'])}개 부족</p>", unsafe_allow_html=True)
                             elif data["현재 개방 카운터"] > data["AI 권장"] + 1:
-                                st.markdown(f"<p style='color:#00FF7F; font-size:13px; font-weight:600; text-align:center; margin-top:5px;'>▼ {int(data['현재 개방 카운터'] - data['AI 권장'])}개 감축 가능</p>", unsafe_allow_html=True)
-                            st.write("")
+                                st.markdown(f"<p style='color:#00FF7F; font-size:12px; font-weight:600; text-align:center;'>▼ {int(data['현재 개방 카운터'] - data['AI 권장'])}개 감축 가능</p>", unsafe_allow_html=True)
             
-                # 6. 스마트 인력 재배치 제안 (최종 요약)
+                # 6. 인력 재배치 제안
                 st.divider()
                 surplus_areas = edited_df[edited_df["현재 개방 카운터"] > edited_df["AI 권장"]]["구역"].tolist()
                 shortage_areas = edited_df[edited_df["현재 개방 카운터"] < edited_df["AI 권장"]]["구역"].tolist()
-            
                 if surplus_areas and shortage_areas:
                     st.success(f"🔄 **AI 재배치 가이드**: 여유 있는 **{surplus_areas[0]} 구역**의 인력을 혼잡한 **{shortage_areas[0]} 구역**으로 이동 배치를 권고합니다.")
-                else:
-                    st.info("✅ **운영 상태 요약**: 모든 구역이 인력 최적화 상태이거나 구역 간 편차가 크지 않습니다.")
-            
             else:
-                st.error("분석 가능한 카운터 데이터(B~N)가 존재하지 않습니다.")
+                st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
     
         else:
             st.warning("분석할 구역을 선택해주세요.")
