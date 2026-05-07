@@ -433,24 +433,24 @@ if df is not None and coords is not None:
                 st.line_chart(sim_data)
 
         # ---------------------------------------------------------
-        # [업데이트] 9. 실시간 전 구역 카운터 개방 최적화 가이드 (A 제외 및 가시성 강화)
+        # [최종본] 9. 실시간 전 구역 카운터 개방 최적화 가이드 (A 제외 & 감축 가이드 포함)
         # ---------------------------------------------------------
         st.divider()
         st.markdown("<h2 style='text-align: center; color: #00EEFF;'>👨‍✈️ Smart Resource Optimizer</h2>", unsafe_allow_html=True)
-
-        # 1. 운영 설정값 (Expander 디자인 개선)
-        with st.expander("⚙️ 운영 최적화 알고리즘 기준 설정", expanded=False):
+        
+        # 1. 운영 설정값 (현재 실제 개방 수치 입력 추가)
+        with st.expander("⚙️ 운영 최적화 알고리즘 및 현황 설정", expanded=False):
             c_set1, c_set2 = st.columns(2)
             with c_set1:
-                target_wait = st.slider("목표 대기 시간 (분)", 5, 30, 15)
-            with c_set2:
-                # 분모가 0이 되는 것을 방지하기 위해 min_value=1
                 service_rate_per_counter = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
-        
+            with c_set2:
+                # 실제 운영 중인 카운터 수를 입력받아 권장 수치와 비교합니다.
+                actual_open_total = st.number_input("현재 실제 개방 중인 총 카운터 수", 0, 100, 10)
+
         # 2. 데이터 추출 및 A 구역 배제
-        # len(a) == 1은 알파벳 카운터를 의미하며, 'A'와 'I'를 제외합니다.
+        # 리스트 컴프리헨션에서 'A'를 명시적으로 제외하여 로직에서 완전히 제거합니다.
         counter_areas = [a for a in pivot_df.columns if len(a) == 1 and a not in ['A', 'I']]
-        
+
         if counter_areas:
             analysis_results = []
             for area in counter_areas:
@@ -458,85 +458,87 @@ if df is not None and coords is not None:
                 prev_p = pivot_df[area].iloc[prev_idx]
                 accel = (curr_p - prev_p) / 5
                 pred_p = max(0, curr_p + (accel * 10))
-                # 필요 카운터 수 계산
+                # 필요 카운터 수 계산 (올림 처리)
                 req_c = math.ceil(pred_p / max(1, service_rate_per_counter))
-        
+
                 analysis_results.append({
                     "area": area, "current": curr_p, "pred": pred_p, "req": req_c, "accel": accel
                 })
 
-            # AI 우선순위 분석
+            # AI 우선순위 및 전체 통계
             recommend_df = pd.DataFrame(analysis_results).sort_values(by=['req', 'accel'], ascending=False)
+            total_req_counters = sum(d['req'] for d in analysis_results)
             top_area = recommend_df.iloc[0]
+
+            # 3. 상단 대시보드 (현재 vs 권장 비교 및 감축 알림)
+            diff = actual_open_total - total_req_counters
     
-            # 상단 추천 대시보드 (High Visibility)
             st.markdown(f"""
                 <div style="background-color: #0e1117; padding: 20px; border-left: 10px solid #00EEFF; border-radius: 10px; margin-bottom: 20px;">
-                    <h3 style="margin:0; color:white;">🤖 AI 관제 엔진 권고 사항</h3>
-                    <p style="font-size: 18px; color: #ccc; margin-top: 10px;">
-                        현재 가장 집중이 필요한 곳은 <b style="color:#FF4B4B;">{top_area['area']} 구역</b>이며, 
-                        약 <b style="color:#00EEFF;">{top_area['req']}개</b>의 카운터 운영이 필수적입니다.
+                    <h3 style="margin:0; color:white;">🤖 AI 관제 엔진 분석 결과</h3>
+                    <p style="font-size: 16px; color: #ccc; margin-top: 10px;">
+                        전체 구역 권장 카운터: <b style="color:#00EEFF;">{total_req_counters}개</b> (현재 실제 개방: {actual_open_total}개)
                     </p>
-                </div>
             """, unsafe_allow_html=True)
-
-            # 3. 전 구역 동적 카드 배치 (가시성 극대화 디자인)
-            st.markdown(f"### 📍 실시간 구역별 권장 가이드 <small>({in_hour:02d}:{in_min:02d} 기준)</small>", unsafe_allow_html=True)
     
+            if diff > 0:
+                st.success(f"🍃 **운영 효율화**: 현재 {diff}개의 카운터가 초과 개방되었습니다. 인력을 줄여 비용을 절감할 수 있습니다.")
+            elif diff < 0:
+                st.error(f"🚨 **인력 부족**: 현재 권장 수치보다 {abs(diff)}개의 카운터가 부족합니다. 즉시 증설을 권고합니다.")
+            else:
+                st.info("✅ **최적 상태**: 현재 수요에 맞춰 아주 이상적인 인력이 배치되어 있습니다.")
+    
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+            # 4. 전 구역 동적 카드 배치
+            st.markdown(f"### 📍 구역별 권장 운영 현황 <small>({in_hour:02d}:{in_min:02d} 기준)</small>", unsafe_allow_html=True)
+            
             rows = [analysis_results[i:i + 4] for i in range(0, len(analysis_results), 4)]
-    
+            
             for row in rows:
                 cols = st.columns(4)
                 for i, data in enumerate(row):
                     with cols[i]:
-                        # 상태 로직 세분화 (급증 / 혼잡 / 유지 / 감축)
+                        # 상태 로직 세분화
                         if data['accel'] > 2.0:
-                            status_icon, status_msg, color, bg_color = "🚀", "인원 급증 (증설 권고)", "#FF4B4B", "rgba(255, 75, 75, 0.1)"
+                            status_icon, status_msg, color, bg_color = "🚀", "인원 급증 (증설)", "#FF4B4B", "rgba(255, 75, 75, 0.1)"
                         elif data['req'] >= 8:
-                            status_icon, status_msg, color, bg_color = "⚠️", "혼잡 발생 (주의)", "#FFA500", "rgba(255, 165, 0, 0.1)"
-                        elif data['current'] < (service_rate_per_counter * 0.3): # 용량 대비 인원이 30% 미만일 때
-                            status_icon, status_msg, color, bg_color = "🍃", "여유 (인력 감축 가능)", "#00FF7F", "rgba(0, 255, 127, 0.1)"
+                            status_icon, status_msg, color, bg_color = "⚠️", "혼잡 주의", "#FFA500", "rgba(255, 165, 0, 0.1)"
+                        elif data['req'] <= 1: # 필요 카운터가 거의 없는 경우
+                            status_icon, status_msg, color, bg_color = "🍃", "여유 (인력 감축)", "#00FF7F", "rgba(0, 255, 127, 0.1)"
                         else:
                             status_icon, status_msg, color, bg_color = "✅", "적정 (현행 유지)", "#00EEFF", "rgba(0, 238, 255, 0.05)"
-                
-                        # HTML 카드로 가시성 업그레이드
+                        
                         st.markdown(f"""
-                        <div style="padding:20px; border-radius:15px; border: 2px solid {color}; background-color:{bg_color}; min-height: 220px;">
+                        <div style="padding:15px; border-radius:15px; border: 2px solid {color}; background-color:{bg_color}; min-height: 180px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 24px; font-weight: bold; color: white;">{data['area']}</span>
-                                <span style="font-size: 20px;">{status_icon}</span>
+                                <span style="font-size: 20px; font-weight: bold; color: white;">{data['area']}</span>
+                                <span style="font-size: 18px;">{status_icon}</span>
                             </div>
-                            <div style="margin: 15px 0;">
-                                <div style="font-size: 12px; color: #aaa;">권장 카운터</div>
-                                <div style="font-size: 32px; font-weight: 800; color: {color};">{data['req']}<span style="font-size:18px;">개</span></div>
+                            <div style="margin: 10px 0;">
+                                <div style="font-size: 11px; color: #aaa;">권장 개방</div>
+                                <div style="font-size: 28px; font-weight: 800; color: {color};">{data['req']}<span style="font-size:16px;">개</span></div>
                             </div>
-                            <div style="font-size: 13px; font-weight: 600; color: {color}; margin-bottom: 10px;">{status_msg}</div>
-                            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; font-size: 11px; color: #888;">
-                                현재 인원: {data['current']:.1f}명<br>
-                                10분 후 예측: {data['pred']:.1f}명
-                            </div>
+                            <div style="font-size: 12px; font-weight: 600; color: {color};">{status_msg}</div>
                         </div>
                         """, unsafe_allow_html=True)
                         st.write("") 
-
-            # 4. 스마트 인력 재배치 (Best Matching)
-            st.divider()
-            
-            # 재배치 로직: '감축 가능' 구역에서 '증설 필요' 구역으로의 매칭
-            surplus_areas = [d for d in analysis_results if d['current'] < (service_rate_per_counter * 0.3)]
-            shortage_areas = [d for d in analysis_results if d['accel'] > 1.5 or d['req'] >= 8]
-
-            if surplus_areas and shortage_areas:
-                best_from = sorted(surplus_areas, key=lambda x: x['current'])[0]['area']
-                best_to = sorted(shortage_areas, key=lambda x: x['req'], reverse=True)[0]['area']
         
-                st.success(f"🔄 **최적 재배치 시나리오**: 현재 여유로운 **{best_from} 구역**의 인력을 혼잡도가 높은 **{best_to} 구역**으로 이동시켜 운영 효율을 극대화하십시오.")
+            # 5. 스마트 인력 재배치 알림
+            st.divider()
+            surplus_areas = [d for d in analysis_results if d['req'] <= 1]
+            shortage_areas = [d for d in analysis_results if d['req'] >= 8 or d['accel'] > 1.5]
+        
+            if surplus_areas and shortage_areas:
+                best_from = surplus_areas[0]['area']
+                best_to = shortage_areas[0]['area']
+                st.success(f"🔄 **AI 재배치 제안**: 상대적으로 여유로운 **{best_from} 구역**의 인력을 혼잡한 **{best_to} 구역**으로 전환 배치하여 운영 효율을 높일 수 있습니다.")
             else:
-                st.info("💡 모든 구역의 인력 배치가 현재 수요에 최적화되어 있습니다.")
-
+                st.info("💡 현재 구역 간 인력 밸런스가 적절합니다.")
+        
         else:
             st.error("분석 가능한 카운터 데이터(B~N)가 존재하지 않습니다.")
-        
+                
         # ---------------------------------------------------------
         # [신규 추가] 10. 인력 재배치 시뮬레이션 (Efficiency Dashboard)
         # ---------------------------------------------------------
