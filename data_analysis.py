@@ -60,8 +60,8 @@ if df is not None and coords is not None:
     pivot_df = pivot_raw.rolling(window=10, min_periods=1, center=True).mean()
     total_flow = pivot_df.sum(axis=1).reindex(range(1440), fill_value=0)
 
-    # 탭 구성
-    tab1, tab2, tab3 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석"])
+  # 탭 구성
+    tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
     # --- [TAB 1] 실시간 통합 관제 ---
     with tab1:
@@ -582,6 +582,55 @@ if df is not None and coords is not None:
                 st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
         else:
             st.warning("분석할 구역을 선택해주세요.")
+    
+    # --- [TAB 4] 안전 관리 및 위기 대응 ---
+    with tab4:
+        st.title("🛡️ 안전 관리 및 위기 대응 시스템")
+        st.markdown("공항 내 밀집도를 실시간 모니터링하고, 비상 상황 시 즉각적인 의사결정을 지원합니다.")
+        
+        # ---------------------------------------------------------
+        # 1. 구역별 밀집도 임계치 경보 (Safety Threshold)
+        # ---------------------------------------------------------
+        st.subheader("🚨 실시간 안전 밀집도 현황")
+        
+        # 임계치 설정 (전역 변수 활용)
+        danger_limit = 120  # 위험 기준
+        warning_limit = 80  # 주의 기준
+        
+        # 가로로 구역별 상태 카드 배치 (선택된 구역 기준)
+        if selected_areas:
+            safety_cols = st.columns(len(selected_areas))
+            for i, area in enumerate(selected_areas):
+                curr_p = pivot_df[area].iloc[now_idx]
+                
+                with safety_cols[i]:
+                    if curr_p >= danger_limit:
+                        st.error(f"### {area}\n**{curr_p:.1f}명**\n\n🚨 위험 (밀집도 초과)")
+                    elif curr_p >= warning_limit:
+                        st.warning(f"### {area}\n**{curr_p:.1f}명**\n\n⚠️ 주의 (혼잡도 높음)")
+                    else:
+                        st.success(f"### {area}\n**{curr_p:.1f}명**\n\n✅ 정상")
+        else:
+            st.info("상단 '구역별 상세 비교 분석' 탭에서 모니터링할 구역을 먼저 선택해주세요.")
+
+        st.divider()
+
+        # ---------------------------------------------------------
+        # 2. 이동 경로 예측 및 정체 구역 시각화 (뼈대만 생성)
+        # ---------------------------------------------------------
+        st.subheader("🔍 향후 정체 예상 구역 (Predictive Insight)")
+        st.info("현재 유입 가속도를 바탕으로 10분 뒤 혼잡도를 계산 중입니다...")
+        # (이 부분은 다음 단계에서 세부 로직을 채울 예정입니다)
+
+        st.divider()
+
+        # ---------------------------------------------------------
+        # 3. 비상 대피로 최적화 (뼈대만 생성)
+        # ---------------------------------------------------------
+        st.subheader("🌋 위기 대응 시뮬레이터")
+        st.caption("사고 발생 시 최적 대피 경로를 산출합니다.")
+        # (이 부분도 다음 단계에서 버튼과 시뮬레이션을 채울 예정입니다)
+
 else:
     st.error("데이터 파일을 로드할 수 없습니다. 파일 경로와 날짜 설정을 확인해주세요.")
 
