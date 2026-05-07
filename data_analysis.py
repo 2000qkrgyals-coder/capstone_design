@@ -559,17 +559,17 @@ if df is not None and coords is not None:
                     shortage_areas = edited_df[edited_df["현재 개방 카운터"] < edited_df["AI 권장"]]["구역"].tolist()
                     if surplus_areas and shortage_areas:
                         st.success(f"🔄 **AI 재배치 가이드**: 여유 있는 **{surplus_areas[0]} 구역**의 인력을 혼잡한 **{shortage_areas[0]} 구역**으로 이동 배치를 권고합니다.")
-                else:
-                    st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
-                    # 6. 인력 재배치 제안
-                    st.divider()
-                    surplus_areas = edited_df[edited_df["현재 개방 카운터"] > edited_df["AI 권장"]]["구역"].tolist()
-                    shortage_areas = edited_df[edited_df["현재 개방 카운터"] < edited_df["AI 권장"]]["구역"].tolist()
-                    if surplus_areas and shortage_areas:
-                        st.success(f"🔄 **AI 재배치 가이드**: 여유 있는 **{surplus_areas[0]} 구역**의 인력을 혼잡한 **{shortage_areas[0]} 구역**으로 이동 배치를 권고합니다.")
-                else:
-                    st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
-    
+                    else:
+                        st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
+                        # 6. 인력 재배치 제안
+                        st.divider()
+                        surplus_areas = edited_df[edited_df["현재 개방 카운터"] > edited_df["AI 권장"]]["구역"].tolist()
+                        shortage_areas = edited_df[edited_df["현재 개방 카운터"] < edited_df["AI 권장"]]["구역"].tolist()
+                        if surplus_areas and shortage_areas:
+                            st.success(f"🔄 **AI 재배치 가이드**: 여유 있는 **{surplus_areas[0]} 구역**의 인력을 혼잡한 **{shortage_areas[0]} 구역**으로 이동 배치를 권고합니다.")
+                    else:
+                        st.error("데이터에서 카운터 구역(B~N)을 찾을 수 없습니다.")
+        
         else:
             st.warning("분석할 구역을 선택해주세요.")
 else:
