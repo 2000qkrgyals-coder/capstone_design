@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from PIL import Image
 import os
+import math
 
 # --- 0. 페이지 설정 ---
 st.set_page_config(page_title="ICN Smart Control Center", layout="wide")
