@@ -583,7 +583,7 @@ if df is not None and coords is not None:
         else:
             st.warning("분석할 구역을 선택해주세요.")
     
-    # --- [TAB 4] 안전 관리 및 위기 대응 ---
+# --- [TAB 4] 안전 관리 및 위기 대응 ---
     with tab4:
         st.title("🛡️ 안전 관리 및 위기 대응 시스템")
         st.markdown("공항 내 밀집도를 실시간 모니터링하고, 비상 상황 시 즉각적인 의사결정을 지원합니다.")
@@ -593,11 +593,9 @@ if df is not None and coords is not None:
         # ---------------------------------------------------------
         st.subheader("🚨 실시간 안전 밀집도 현황")
         
-        # 임계치 설정 (전역 변수 활용)
         danger_limit = 120  # 위험 기준
         warning_limit = 80  # 주의 기준
         
-        # 가로로 구역별 상태 카드 배치 (선택된 구역 기준)
         if selected_areas:
             safety_cols = st.columns(len(selected_areas))
             for i, area in enumerate(selected_areas):
@@ -605,86 +603,101 @@ if df is not None and coords is not None:
                 
                 with safety_cols[i]:
                     if curr_p >= danger_limit:
-                        st.error(f"### {area}\n**{curr_p:.1f}명**\n\n🚨 위험 (밀집도 초과)")
+                        st.error(f"### {area}\n**{curr_p:.1f}명**\n\n🚨 위험")
                     elif curr_p >= warning_limit:
-                        st.warning(f"### {area}\n**{curr_p:.1f}명**\n\n⚠️ 주의 (혼잡도 높음)")
+                        st.warning(f"### {area}\n**{curr_p:.1f}명**\n\n⚠️ 주의")
                     else:
                         st.success(f"### {area}\n**{curr_p:.1f}명**\n\n✅ 정상")
         else:
-            st.info("상단 '구역별 상세 비교 분석' 탭에서 모니터링할 구역을 먼저 선택해주세요.")
+            st.info("💡 상단 '구역별 상세 비교 분석' 탭에서 모니터링할 구역을 먼저 선택해주세요.")
 
         st.divider()
 
-       # ---------------------------------------------------------
+        # ---------------------------------------------------------
         # 2. 이동 경로 예측 및 정체 구역 시각화 (Predictive Insight)
         # ---------------------------------------------------------
         st.subheader("🔍 향후 정체 예상 구역 (10분 후 예측)")
         
-        pred_data = []
-        # 모든 구역에 대해 가속도 기반 예측 수행
+        pred_list = []
         for area in pivot_df.columns:
             curr_v = pivot_df[area].iloc[now_idx]
-            prev_v = pivot_df[area].iloc[max(0, now_idx-1)] # 1분 전 데이터와 비교
+            # 1분 전 데이터가 없을 경우를 대비해 처리
+            prev_idx = max(0, now_idx - 1)
+            prev_v = pivot_df[area].iloc[prev_idx]
             
-            # 유입 가속도 계산 (분당 변화량)
-            accel = (curr_v - prev_v) 
-            # 10분 뒤 예상 인원 = 현재 인원 + (분당 변화량 * 10)
+            # 유입 속도 (분당 인원 변화)
+            accel = curr_v - prev_v
+            # 10분 후 예측 (현재 + 속도*10)
             future_v = max(0, curr_v + (accel * 10))
             
-            # 위험도 판정
-            risk_level = "정상"
-            if future_v >= danger_limit: risk_level = "🚨 위험"
-            elif future_v >= warning_limit: risk_level = "⚠️ 주의"
-            
-            # 위험/주의인 구역만 리스트에 담기
-            if risk_level != "정상":
-                pred_data.append({
+            # 위험/주의 단계에 해당하는 것만 추출
+            if future_v >= warning_limit:
+                risk_tag = "🚨 위험" if future_v >= danger_limit else "⚠️ 주의"
+                pred_list.append({
                     "구역": area,
                     "현재 인원": round(curr_v, 1),
                     "유입 속도": f"{accel:+.1f} 명/분",
                     "10분 후 예상": round(future_v, 1),
-                    "위험도": risk_level
+                    "위험도": risk_tag
                 })
 
-        if pred_data:
-            # 예측 결과를 데이터프레임으로 시각화
-            pdf = pd.DataFrame(pred_data).sort_values("10분 후 예상", ascending=False)
+        if pred_list:
+            pdf = pd.DataFrame(pred_list).sort_values("10분 후 예상", ascending=False)
             
-            # 스타일링 (위험도에 따른 색상 변경)
+            # 스타일 함수 정의 (Pandas 2.0+ 대응)
             def highlight_risk(val):
-                if '위험' in val: return 'background-color: rgba(255, 75, 75, 0.2)'
-                if '주의' in val: return 'background-color: rgba(255, 165, 0, 0.2)'
+                if '위험' in val: return 'color: #ff4b4b; font-weight: bold;'
+                if '주의' in val: return 'color: #ffa500; font-weight: bold;'
                 return ''
 
-            st.table(pdf.style.applymap(highlight_risk, subset=['위험도']))
-            st.caption("💡 유입 가속도(Acceleration)를 분석하여 골든타임 내 정체 구역을 선제적으로 파악합니다.")
-            
-            # 예측 트렌드 그래프 (상위 3개 구역)
-            top_pred_areas = pdf['구역'].head(3).tolist()
-            fig_pred = go.Figure()
-            for area in top_pred_areas:
-                # 현재 시점 전후 20분간의 흐름 시각화
-                start_p = max(0, now_idx-10)
-                end_p = min(1440, now_idx+1)
-                fig_pred.add_trace(go.Scatter(
-                    x=list(range(start_p, end_p)), 
-                    y=pivot_df[area].iloc[start_p:end_p],
-                    name=f"{area} 추세",
-                    mode='lines+markers'
-                ))
-            fig_pred.update_layout(template="plotly_dark", height=300, title="주요 정체 예상 구역 최근 유입 흐름")
-            st.plotly_chart(fig_pred, use_container_width=True)
-            
+            # st.table 대신 st.dataframe을 써서 스타일 적용
+            st.dataframe(
+                pdf.style.map(highlight_risk, subset=['위험도']),
+                use_container_width=True,
+                hide_index=True
+            )
+            st.caption("💡 유입 가속도를 분석하여 정체 발생 전 선제적 대응이 가능한 구역들입니다.")
         else:
-            st.success("✅ 향후 10분 내에 임계치를 초과할 것으로 예상되는 구역이 없습니다. 운영이 안정적입니다.")
+            st.success("✅ 모든 구역이 안정적입니다. 10분 내 임계치 초과 예상 구역이 없습니다.")
+
+        st.divider()
 
         # ---------------------------------------------------------
-        # 3. 비상 대피로 최적화 (뼈대만 생성)
+        # 3. 비상 대피로 최적화 (Emergency Routing)
         # ---------------------------------------------------------
         st.subheader("🌋 위기 대응 시뮬레이터")
-        st.caption("사고 발생 시 최적 대피 경로를 산출합니다.")
-        # (이 부분도 다음 단계에서 버튼과 시뮬레이션을 채울 예정입니다)
-
+        
+        # 사고 발생 시나리오 설정
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            incident_area = st.selectbox("사고 발생 구역 지정", pivot_df.columns)
+            evac_btn = st.button("🔥 비상 대피령 발령", type="primary", use_container_width=True)
+            
+        with c2:
+            if evac_btn:
+                st.error(f"🚨 [긴급] {incident_area} 구역 사고 발생! 즉시 대피를 유도합니다.")
+                
+                # [Logic] 대피 알고리즘: 사고지점 제외, 현재 혼잡도가 가장 낮은 구역 Top 2 추천
+                # 실제 좌표 데이터(coords)가 있다면 최단거리로 계산하겠지만, 
+                # 여기서는 '가장 여유 있는 구역'을 찾는 논리로 구성합니다.
+                
+                escape_candidates = []
+                for area in pivot_df.columns:
+                    if area == incident_area: continue
+                    
+                    curr_val = pivot_df[area].iloc[now_idx]
+                    # 여유 용량 계산 (임계치 - 현재인원)
+                    capacity = danger_limit - curr_val
+                    escape_candidates.append({"구역": area, "여유용량": capacity, "현재인원": curr_val})
+                
+                # 여유 용량이 많은 순으로 정렬
+                escape_df = pd.DataFrame(escape_candidates).sort_values("여유용량", ascending=False).head(2)
+                
+                st.markdown("### **🏃 추천 대피 경로**")
+                for _, row in escape_df.iterrows():
+                    st.info(f"👉 **{row['구역']}** 방향으로 유도 (현재 {row['현재인원']:.1f}명 상주 중)")
+            else:
+                st.write("사고 발생 구역을 선택하고 버튼을 누르면 최적 대피 경로가 산출됩니다.")
 else:
     st.error("데이터 파일을 로드할 수 없습니다. 파일 경로와 날짜 설정을 확인해주세요.")
 
