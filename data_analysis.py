@@ -430,19 +430,6 @@ if df is not None and coords is not None:
                         st.warning(f"⚖️ **분산 고려**: 현재 {abs(im_diff):.1f}분 편차 발생 중")
                     else:
                         st.success("✅ **분배 적정**: 양측 검색대 흐름이 균형적입니다.")
-                
-                st.divider() # 섹션 구분
-
-                # --- 카운터 개방 가이드 (기존 로직 유지 및 보완) ---
-                st.write("**📝 체크인 카운터 운영 제언**")
-                for area in selected_areas:
-                    # 카운터 구역(알파벳 1글자)인 경우만 출력
-                    if len(area) == 1:
-                        accel_val = (pivot_df[area].iloc[now_idx] - pivot_df[area].iloc[prev_idx]) / 5
-                        if accel_val > 2.0:
-                            st.error(f"📍 **{area} 카운터**: 유입 급증! 추가 개방 필요")
-                        elif accel_val < -2.0 and pivot_df[area].iloc[now_idx] < 30:
-                            st.write(f"🍃 **{area} 카운터**: 인력 효율화 가능 구역")
     
            # 8. 위기 대응 시뮬레이션 (간이 대피로 확인)
             st.divider()
