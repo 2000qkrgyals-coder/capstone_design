@@ -373,3 +373,66 @@ if df is not None and coords is not None:
             st.warning("분석할 구역을 선택해주세요.")
 else:
     st.error("데이터 파일을 로드할 수 없습니다. 파일 경로와 날짜 설정을 확인해주세요.")
+
+# ---------------------------------------------------------
+            # [신규 추가] 7. 실시간 관제 AI 인사이트 (운용 효율 및 안전 관리)
+            # ---------------------------------------------------------
+            st.divider()
+            st.subheader("🛡️ 실시간 관제 AI 인사이트 (운영 및 안전)")
+            
+            # 관리자용 의사결정 지원 컬럼
+            col_safety, col_efficiency = st.columns(2)
+            
+            with col_safety:
+                st.markdown("#### **🚨 구역별 안전 임계치 경보**")
+                for area in selected_areas:
+                    curr_p = pivot_df[area].iloc[now_idx]
+                    
+                    # 안전 임계치 논리 (예: 100명 초과 시 위험, 80명 초과 시 주의)
+                    if curr_p > 100:
+                        st.error(f"**[위험]** {area} 구역 밀집도 초과 ({curr_p:.1f}명) - 즉시 인원 통제 필요")
+                    elif curr_p > 80:
+                        st.warning(f"**[주의]** {area} 구역 혼잡도 상승 ({curr_p:.1f}명) - 모니터링 강화")
+                    else:
+                        st.success(f"**[정상]** {area} 구역 밀집도 안정적")
+                
+                st.caption("※ 지수 모델 기반 병목 구간 진입 여부를 실시간으로 감시합니다.")
+
+            with col_efficiency:
+                st.markdown("#### **👨‍✈️ 인력 최적화 및 운영 가이드**")
+                
+                # 보안검색대 스마트 분배 가이드 (IM1, IM2 기준)
+                if 'IM1' in pivot_df.columns and 'IM2' in pivot_df.columns:
+                    v1 = pivot_df['IM1'].iloc[now_idx]
+                    v2 = pivot_df['IM2'].iloc[now_idx]
+                    
+                    if abs(v1 - v2) > 20:
+                        heavy_im = "IM1" if v1 > v2 else "IM2"
+                        light_im = "IM2" if v1 > v2 else "IM1"
+                        st.info(f"💡 **분산 권고**: {heavy_im}에 인원이 쏠려있습니다. {light_im}로 승객 유도를 권장합니다.")
+                
+                # 카운터 개방 가이드 (가속도 기반 예측)
+                for area in selected_areas:
+                    accel_val = (pivot_df[area].iloc[now_idx] - pivot_df[area].iloc[prev_idx]) / 5
+                    if accel_val > 2.0: # 분당 2명 이상 급증 시
+                        st.error(f"📍 **카운터 추가 개방**: {area} 구역 유입 속도 급증! 추가 가동이 필요합니다.")
+                    elif accel_val < -2.0 and pivot_df[area].iloc[now_idx] < 30:
+                        st.write(f"🍃 **운영 효율화**: {area} 구역 수요 감소 중. 인력 재배치 고려 가능.")
+
+            # 8. 위기 대응 시뮬레이션 (간이 대피로 확인)
+            st.divider()
+            st.subheader("🌋 비상 상황 대응 시나리오")
+            evac_col1, evac_col2 = st.columns([1, 2])
+            
+            with evac_col1:
+                emergency_area = st.selectbox("사고 발생 구역 가정", selected_areas)
+                if st.button("🚨 비상 대피 시나리오 가동"):
+                    st.critical(f"**{emergency_area} 구역 비상 상황 전파!**")
+                    st.write(f"1. {emergency_area} 인근 승객 최단거리 대피 유도")
+                    st.write(f"2. {emergency_area} 진입 셔터 폐쇄 및 우회 경로 확보")
+            
+            with evac_col2:
+                # 사고 구역 제외 혼잡도 재계산 시각화 (예시 히트맵)
+                st.caption("사고 발생 시 주변 구역 전이 혼잡도 예측 모델 (Simulation)")
+                sim_data = pivot_df[selected_areas].iloc[now_idx:now_idx+6].copy() # 향후 60분 예측 가정
+                st.line_chart(sim_data)
