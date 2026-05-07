@@ -413,6 +413,52 @@ if df is not None and coords is not None:
                         st.error(f"📍 **카운터 추가 개방**: {area} 구역 유입 속도 급증! 추가 가동이 필요합니다.")
                     elif accel_val < -2.0 and pivot_df[area].iloc[now_idx] < 30:
                         st.write(f"🍃 **운영 효율화**: {area} 구역 수요 감소 중. 인력 재배치 고려 가능.")
+
+            with col_efficiency:
+                st.markdown("#### **👨‍✈️ 인력 최적화 및 운영 가이드**")
+                
+                # --- [고도화] 보안검색대(IM) 스마트 분배 가이드 ---
+                if 'IM1' in pivot_df.columns and 'IM2' in pivot_df.columns:
+                    st.write("**🛡️ 보안검색대 실시간 분배 진단**")
+                    v1_curr = pivot_df['IM1'].iloc[now_idx]
+                    v2_curr = pivot_df['IM2'].iloc[now_idx]
+                    
+                    # 1. 사용자가 설정한 service_rate를 활용해 대기시간 계산 (exp 함수 로직을 반영한 간이 수식)
+                    # 실제 프로젝트에서 사용한 exp(인원/계수) 형태가 있다면 여기에 적용하세요.
+                    wait1 = (v1_curr / service_rate) * 10 
+                    wait2 = (v2_curr / service_rate) * 10
+                    
+                    # 2. 불균형 편차 계산
+                    im_diff = wait1 - wait2
+                    
+                    if abs(im_diff) >= 8:  # 8분 이상 차이 날 경우 강력 권고
+                        heavy_im = "IM1" if im_diff > 0 else "IM2"
+                        light_im = "IM2" if im_diff > 0 else "IM1"
+                        
+                        st.error(f"⚠️ **검색대 불균형 심화 (차이: {abs(im_diff):.1f}분)**")
+                        st.info(f"💡 **조치**: {heavy_im} 진입 승객을 **{light_im}**으로 즉시 분산 유도하십시오.")
+                        
+                        # 시각적 인디케이터 (Progress Bar로 비중 표시)
+                        total_im = v1_curr + v2_curr
+                        st.progress(v1_curr / total_im if total_im > 0 else 0.5, text=f"IM1({v1_curr:.0f}명) vs IM2({v2_curr:.0f}명)")
+                    
+                    elif abs(im_diff) >= 4: # 4~8분 사이는 주의
+                        st.warning(f"⚖️ **분산 고려**: 현재 {abs(im_diff):.1f}분 편차 발생 중")
+                    else:
+                        st.success("✅ **분배 적정**: 양측 검색대 흐름이 균형적입니다.")
+                
+                st.divider() # 섹션 구분
+
+                # --- 카운터 개방 가이드 (기존 로직 유지 및 보완) ---
+                st.write("**📝 체크인 카운터 운영 제언**")
+                for area in selected_areas:
+                    # 카운터 구역(알파벳 1글자)인 경우만 출력
+                    if len(area) == 1:
+                        accel_val = (pivot_df[area].iloc[now_idx] - pivot_df[area].iloc[prev_idx]) / 5
+                        if accel_val > 2.0:
+                            st.error(f"📍 **{area} 카운터**: 유입 급증! 추가 개방 필요")
+                        elif accel_val < -2.0 and pivot_df[area].iloc[now_idx] < 30:
+                            st.write(f"🍃 **{area} 카운터**: 인력 효율화 가능 구역")
     
            # 8. 위기 대응 시뮬레이션 (간이 대피로 확인)
             st.divider()
