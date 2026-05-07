@@ -615,14 +615,68 @@ if df is not None and coords is not None:
 
         st.divider()
 
+       # ---------------------------------------------------------
+        # 2. 이동 경로 예측 및 정체 구역 시각화 (Predictive Insight)
         # ---------------------------------------------------------
-        # 2. 이동 경로 예측 및 정체 구역 시각화 (뼈대만 생성)
-        # ---------------------------------------------------------
-        st.subheader("🔍 향후 정체 예상 구역 (Predictive Insight)")
-        st.info("현재 유입 가속도를 바탕으로 10분 뒤 혼잡도를 계산 중입니다...")
-        # (이 부분은 다음 단계에서 세부 로직을 채울 예정입니다)
+        st.subheader("🔍 향후 정체 예상 구역 (10분 후 예측)")
+        
+        pred_data = []
+        # 모든 구역에 대해 가속도 기반 예측 수행
+        for area in pivot_df.columns:
+            curr_v = pivot_df[area].iloc[now_idx]
+            prev_v = pivot_df[area].iloc[max(0, now_idx-1)] # 1분 전 데이터와 비교
+            
+            # 유입 가속도 계산 (분당 변화량)
+            accel = (curr_v - prev_v) 
+            # 10분 뒤 예상 인원 = 현재 인원 + (분당 변화량 * 10)
+            future_v = max(0, curr_v + (accel * 10))
+            
+            # 위험도 판정
+            risk_level = "정상"
+            if future_v >= danger_limit: risk_level = "🚨 위험"
+            elif future_v >= warning_limit: risk_level = "⚠️ 주의"
+            
+            # 위험/주의인 구역만 리스트에 담기
+            if risk_level != "정상":
+                pred_data.append({
+                    "구역": area,
+                    "현재 인원": round(curr_v, 1),
+                    "유입 속도": f"{accel:+.1f} 명/분",
+                    "10분 후 예상": round(future_v, 1),
+                    "위험도": risk_level
+                })
 
-        st.divider()
+        if pred_data:
+            # 예측 결과를 데이터프레임으로 시각화
+            pdf = pd.DataFrame(pred_data).sort_values("10분 후 예상", ascending=False)
+            
+            # 스타일링 (위험도에 따른 색상 변경)
+            def highlight_risk(val):
+                if '위험' in val: return 'background-color: rgba(255, 75, 75, 0.2)'
+                if '주의' in val: return 'background-color: rgba(255, 165, 0, 0.2)'
+                return ''
+
+            st.table(pdf.style.applymap(highlight_risk, subset=['위험도']))
+            st.caption("💡 유입 가속도(Acceleration)를 분석하여 골든타임 내 정체 구역을 선제적으로 파악합니다.")
+            
+            # 예측 트렌드 그래프 (상위 3개 구역)
+            top_pred_areas = pdf['구역'].head(3).tolist()
+            fig_pred = go.Figure()
+            for area in top_pred_areas:
+                # 현재 시점 전후 20분간의 흐름 시각화
+                start_p = max(0, now_idx-10)
+                end_p = min(1440, now_idx+1)
+                fig_pred.add_trace(go.Scatter(
+                    x=list(range(start_p, end_p)), 
+                    y=pivot_df[area].iloc[start_p:end_p],
+                    name=f"{area} 추세",
+                    mode='lines+markers'
+                ))
+            fig_pred.update_layout(template="plotly_dark", height=300, title="주요 정체 예상 구역 최근 유입 흐름")
+            st.plotly_chart(fig_pred, use_container_width=True)
+            
+        else:
+            st.success("✅ 향후 10분 내에 임계치를 초과할 것으로 예상되는 구역이 없습니다. 운영이 안정적입니다.")
 
         # ---------------------------------------------------------
         # 3. 비상 대피로 최적화 (뼈대만 생성)
