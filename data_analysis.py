@@ -432,44 +432,106 @@ if df is not None and coords is not None:
                 sim_data = pivot_df[selected_areas].iloc[now_idx:now_idx+6].copy() # 향후 60분 예측 가정
                 st.line_chart(sim_data)
 
-        # [신규 추가] 9. 실시간 카운터 개방 최적화 가이드 (Operational Efficiency)
-        st.divider()
-        st.header("👨‍✈️ 실시간 카운터 개방 최적화 가이드")
-        
-        # 운영 설정값 (조정 가능)
-        with st.expander("⚙️ 운영 최적화 기준 설정"):
-            target_wait = st.slider("목표 대기 시간 (분)", 5, 30, 15, help="승객이 대기하는 최대 목표 시간입니다.")
-            service_rate_per_counter = st.number_input("카운터당 처리 용량 (명/10분)", 1, 50, 15, help="카운터 1개당 10분 동안 처리 가능한 평균 승객 수입니다.")
-            
-        st.subheader(f"📍 주요 구역별 필요 운영 자원 ({in_hour:02d}:{in_min:02d} 기준)")
+        # ---------------------------------------------------------
+        # [신규 추가] 9. 실시간 전 구역 카운터 개방 최적화 가이드
+        # ---------------------------------------------------------
+st.divider()
+st.header("👨‍✈️ 실시간 카운터 개방 최적화 가이드 (전 구역)")
 
-        counter_cols = st.columns(len(selected_areas))
+# 1. 운영 설정값
+with st.expander("⚙️ 운영 최적화 기준 설정", expanded=False):
+    c_set1, c_set2 = st.columns(2)
+    with c_set1:
+        target_wait = st.slider("목표 대기 시간 (분)", 5, 30, 15)
+    with c_set2:
+        service_rate_per_counter = st.number_input("카운터당 처리 용량 (명/10분)", 1, 100, 15)
 
-        for i, area in enumerate(selected_areas):
-            with counter_cols[i]:
-                curr_people = pivot_df[area].iloc[now_idx]
-                accel_val = (pivot_df[area].iloc[now_idx] - pivot_df[area].iloc[prev_idx]) / 5
+# 2. AI 우선순위 추천 엔진
+st.subheader("🤖 AI 운영 우선순위 추천")
+
+# 분석 대상 구역 추출 (보통 알파벳 1글자 구역들이 카운터임)
+counter_areas = [a for a in pivot_df.columns if len(a) == 1 and a != 'I']
+
+if counter_areas:
+    analysis_results = []
+    for area in counter_areas:
+        curr_p = pivot_df[area].iloc[now_idx]
+        accel = (curr_p - pivot_df[area].iloc[prev_idx]) / 5
+        pred_p = max(0, curr_p + (accel * 10))
+        req_c = math.ceil(pred_p / max(1, service_rate_per_counter))
         
-                # 1. 필요 카운터 수 계산 로직 (간이 리틀의 법칙 + 지수 보정)
-                # 기본 필요수 = 현재 인원 / (카운터당 처리량)
-                # 여기에 유입 가속도(accel)를 더해 선제적 대응 수치 계산
-                predicted_people_10m = max(0, curr_people + (accel_val * 10))
-                required_counters = math.ceil(predicted_people_10m / service_rate_per_counter)
-        
-                # 2. UI 시각화
-                st.metric(label=f"🏗️ {area} 필요 카운터", value=f"{required_counters}개")
-        
-                # 상태별 가이드 메시지
-                if accel_val > 1.5:
-                    st.error("🚨 급증 대응: 즉시 증설")
-                elif required_counters > 5: # 예시 임계치
-                    st.warning("⚠️ 혼잡: 인력 전진 배치")
+        analysis_results.append({
+            "area": area,
+            "current": curr_p,
+            "pred": pred_p,
+            "req": req_c,
+            "accel": accel
+        })
+
+    # 추천 로직: 예측 인원이 많고 가속도가 높은 순서
+    recommend_df = pd.DataFrame(analysis_results).sort_values(by=['req', 'accel'], ascending=False)
+    
+    top_area = recommend_df.iloc[0]
+    
+    # 상단 추천 알림창
+    if top_area['req'] >= 5: # 임계치는 조절 가능
+        st.error(f"🔥 **집중 관제 권고**: 현재 **{top_area['area']} 구역**의 유입 속도가 빨라 가장 많은 인력({top_area['req']}명)이 필요합니다.")
+    else:
+        st.info(f"✨ **운영 상태**: 현재 모든 구역이 안정적이나, **{top_area['area']} 구역**을 중심으로 모니터링을 권장합니다.")
+
+    st.markdown("---")
+
+    # 3. 전 구역 동적 카드 배치 (한 줄에 4개씩)
+    st.subheader(f"📍 구역별 자원 현황 ({in_hour:02d}:{in_min:02d} 기준)")
+    
+    rows = [analysis_results[i:i + 4] for i in range(0, len(analysis_results), 4)]
+    
+    for row in rows:
+        cols = st.columns(4)
+        for i, data in enumerate(row):
+            with cols[i]:
+                # UI 처리
+                if data['accel'] > 1.5:
+                    status_icon = "🚨"
+                    status_msg = "급증: 즉시대응"
+                    color = "red"
+                elif data['req'] > 10:
+                    status_icon = "⚠️"
+                    status_msg = "혼잡: 인력배치"
+                    color = "orange"
                 else:
-                    st.success("✅ 안정: 현행 유지")
-            
-                # 상세 수치
-                st.caption(f"현재: {curr_people:.1f}명")
-                st.caption(f"10분 후 예상: {predicted_people_10m:.1f}명")
+                    status_icon = "✅"
+                    status_msg = "안정: 현행유지"
+                    color = "green"
+                
+                st.markdown(f"""
+                <div style="padding:15px; border-radius:10px; border:1px solid #444; background-color:#1e1e1e;">
+                    <h4 style="margin:0; color:#00EEFF;">🏗️ {data['area']} 카운터</h4>
+                    <h2 style="margin:10px 0;">{data['req']} <span style="font-size:15px;">개 필요</span></h2>
+                    <p style="color:{color}; font-weight:bold; margin:0;">{status_icon} {status_msg}</p>
+                    <hr style="margin:10px 0; border:0.5px solid #333;">
+                    <p style="font-size:12px; margin:0; color:#aaa;">현재: {data['current']:.1f}명</p>
+                    <p style="font-size:12px; margin:0; color:#aaa;">10분후 예상: {data['pred']:.1f}명</p>
+                </div>
+                """, unsafe_allow_html=True)
+                st.write("") # 간격 조절
+
+    # 4. 스마트 재배치 제안 로직 개선
+    st.divider()
+    st.subheader("🔄 구역 간 스마트 인력 순환 배치")
+    
+    idle_candidates = recommend_df[recommend_df['req'] <= 2].sort_values(by='current')
+    busy_candidates = recommend_df[recommend_df['req'] >= 8].sort_values(by='req', ascending=False)
+
+    if not idle_candidates.empty and not busy_candidates.empty:
+        best_idle = idle_candidates.iloc[0]['area']
+        best_busy = busy_candidates.iloc[0]['area']
+        st.success(f"💡 **재배치 알림**: 여유로운 **{best_idle}** 구역의 유휴 인력을 혼잡한 **{best_busy}** 구역으로 전환 배치하여 대기 시간을 획기적으로 줄일 수 있습니다.")
+    else:
+        st.write("✨ 현재 구역 간 인력 균형이 적절하게 유지되고 있습니다.")
+
+else:
+    st.warning("카운터 구역 데이터를 찾을 수 없습니다.")
 
         # ---------------------------------------------------------
         # [신규 추가] 10. 인력 재배치 시뮬레이션 (Efficiency Dashboard)
