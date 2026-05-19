@@ -63,62 +63,117 @@ if df is not None and coords is not None:
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
-    # --- [TAB 1] 실시간 통합 관제 ---
+  # --- [TAB 1] 실시간 통합 관제 (발표용 초고속 자동 재생 버전) ---
     with tab1:
-        st.title(f"📊 실시간 관제 현황 [{in_hour:02d}:{in_min:02d}]")
-        
-        # 💡 [핵심 개선] 지도와 랭킹 차트 영역을 독립된 프래그먼트로 감싸서 깜빡임을 지웁니다.
-        @st.fragment
-        def render_realtime_dashboard(time_min):
-            current_data = df[df['minute_index'] == time_min]
-            active_areas = current_data[current_data['area'] != 'OUTSIDE']
+        st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
+        st.caption("💡 하단의 Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 깜빡임 없이 비디오처럼 자율 재생됩니다.")
+
+        if os.path.exists(bg_img_path):
+            img = Image.open(bg_img_path)
             
-            # 메트릭 영역
-            m1, m2, m3 = st.columns(3)
-            curr_total = total_flow.get(time_min, 0)
-            m1.metric("터미널 전체 인원", f"{curr_total:.1f} 명")
-            if not active_areas.empty:
-                std_val = active_areas['num_people'].std()
-                m2.metric("구역별 혼잡 불균형", f"{std_val:.2f}", help="값이 높을수록 특정 구역 쏠림이 심함")
-                max_area = active_areas.loc[active_areas['num_people'].idxmax(), 'area']
-                m3.warning(f"최대 혼잡 구역: {max_area}")
+            # 1. 애니메이션용 타임라인 전체 데이터 병합 및 정렬
+            anim_base = pd.merge(df, coords, on='area')
+            anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
+            anim_base = anim_base.sort_values('minute_index')
+            unique_times = sorted(anim_base['시간'].unique())
 
-            # 시각화 차트 레이아웃
-            col_map, col_rank = st.columns([2, 1])
-            with col_map:
-                st.subheader("📍 실시간 혼잡 지도")
-                map_data = pd.merge(current_data, coords, on='area')
-                if os.path.exists(bg_img_path):
-                    img = Image.open(bg_img_path)
-                    fig_map = go.Figure()
-                    fig_map.add_layout_image(dict(
-                        source=img, xref="x", yref="y", x=0, y=0, 
-                        sizex=img.size[0], sizey=img.size[1], 
-                        sizing="stretch", opacity=0.5, layer="below"
-                    ))
-                    fig_map.add_trace(go.Scatter(
-                        x=map_data['x'], y=map_data['y'], mode='markers+text',
+            # 2. Plotly 베이스 피규어 생성 (첫 번째 시점 데이터로 기본 틀 구성)
+            first_time = unique_times[0]
+            init_data = anim_base[anim_base['시간'] == first_time]
+
+            fig_anim = go.Figure()
+
+            # 공항 배경 이미지 레이아웃 탑재
+            fig_anim.add_layout_image(dict(
+                source=img, xref="x", yref="y", x=0, y=0, 
+                sizex=img.size[0], sizey=img.size[1], 
+                sizing="stretch", opacity=0.6, layer="below"
+            ))
+
+            # 기본 혼잡도 트레이스 (점 크기와 색상으로 화려하게 표현)
+            fig_anim.add_trace(go.Scatter(
+                x=init_data['x'], y=init_data['y'], mode='markers+text',
+                marker=dict(
+                    size=init_data['num_people'], 
+                    sizemode='area', 
+                    sizeref=2. * max(anim_base['num_people']) / (45**2) if not anim_base.empty else 1,
+                    color=init_data['num_people'], 
+                    colorscale='Jet',  # 발표때 가장 눈에 띄고 화려한 무지개빛 불꽃 테마
+                    showscale=True,
+                    cmin=0, cmax=anim_base['num_people'].max(),
+                    colorbar=dict(title="혼잡 인원 (명)", thickness=15)
+                ),
+                text=init_data['area'], 
+                textfont=dict(size=11, color="white", family="sans-serif"), 
+                textposition="top center"
+            ))
+
+            # 3. 🔥 [핵심] 전체 시간대 프레임(Frames) 사전 빌드 (자바스크립트 가속)
+            frames = []
+            for t in unique_times:
+                t_data = anim_base[anim_base['시간'] == t]
+                frames.append(go.Frame(
+                    data=[go.Scatter(
+                        x=t_data['x'], 
+                        y=t_data['y'], 
                         marker=dict(
-                            size=map_data['num_people'], sizemode='area', 
-                            sizeref=2.*max(map_data['num_people'])/(35**2) if not map_data.empty else 1,
-                            color=map_data['num_people'], colorscale='Reds', showscale=True
+                            size=t_data['num_people'],
+                            color=t_data['num_people']
                         ),
-                        text=map_data['area'], textfont=dict(size=10, color="white"), textposition="top center"
-                    ))
-                    fig_map.update_layout(template="plotly_dark", height=500, margin=dict(l=0,r=0,b=0,t=0))
-                    fig_map.update_xaxes(visible=False, range=[0, img.size[0]])
-                    fig_map.update_yaxes(visible=False, range=[img.size[1], 0])
-                    st.plotly_chart(fig_map, use_container_width=True)
+                        text=t_data['area']
+                    )],
+                    name=t  # 각 프레임의 이름으로 시간 매핑
+                ))
+            fig_anim.frames = frames
 
-            with col_rank:
-                st.subheader("🚩 혼잡도 랭킹 (Top 10)")
-                rank_data = active_areas.sort_values('num_people', ascending=False).head(10)
-                fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
-                fig_rank.update_layout(height=500, yaxis={'autorange': 'reversed'})
-                st.plotly_chart(fig_rank, use_container_width=True)
+            # 4. 🕹️ 발표용 재생/일시정지 및 슬라이더 UI 주입
+            fig_anim.update_layout(
+                template="plotly_dark",
+                height=650,  # 발표 화면에서 시원하게 보이도록 높이 업그레이드
+                margin=dict(l=10, r=10, b=10, t=40),
+                updatemenus=[{
+                    "type": "buttons",
+                    "buttons": [
+                        {
+                            "label": "▶️ Play (자동 관제)",
+                            "method": "animate",
+                            "args": [None, {
+                                "frame": {"duration": 100, "redraw": False}, # 0.1초당 1분씩 초고속 흐름
+                                "fromcurrent": True, 
+                                "transition": {"duration": 50, "easing": "quadratic-in-out"} # 부드러운 스케일 전환효과
+                            }]
+                        },
+                        {
+                            "label": "⏸️ Pause",
+                            "method": "animate",
+                            "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                        }
+                    ],
+                    "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
+                    "x": 0.0, "xanchor": "left", "y": 1.08, "yanchor": "top"
+                }],
+                # 차트 하단에 마우스로 조절 가능한 타임라인 슬라이더 배치
+                sliders=[{
+                    "active": 0,
+                    "yanchor": "top", "xanchor": "left",
+                    "currentvalue": {"font": {"size": 16, "color": "#FF4B4B"}, "prefix": "⏱️ 관제 시점: ", "visible": True, "position": "top light"},
+                    "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
+                    "steps": [{
+                        "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
+                        "label": f.name, "method": "animate"
+                    } for f in frames]
+                }]
+            )
 
-        # 프래그먼트 엔진 가동
-        render_realtime_dashboard(current_time_min)
+            # 좌표축 숨기기 및 범위 고정
+            fig_anim.update_xaxes(visible=False, range=[0, img.size[0]])
+            fig_anim.update_yaxes(visible=False, range=[img.size[1], 0])
+
+            # 웹 가속 차트 출력
+            st.plotly_chart(fig_anim, use_container_width=True)
+            
+        else:
+            st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
 
     # --- [TAB 2, 3, 4] 생략 공간 ---
     # 질문자님의 원래 나머지 탭 코드가 하단에 그대로 이어지면 됩니다.
