@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (초경량 고속 가우시안 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (초경량 커스텀 가우시안 안개 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (고속 안개형 히트맵)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 로딩 없이 부드럽게 시간이 흐르며 인파 밀도가 은은하게 번집니다.")
+        st.title("📊 실시간 관제 현황 (은은한 핫스팟 애니메이션)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파 밀도가 렉 없이 부드럽게 흐르며 안개처럼 번집니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
@@ -80,60 +80,76 @@ if df is not None and coords is not None:
             if anim_base.empty:
                 st.warning("관제 데이터가 존재하지 않습니다.")
             else:
-                # 2. 🌟 초경량 가우시안 커널 맵 빌드
-                # 무겁게 모든 격자를 전송하는 대신, Plotly가 자체 제공하는 밀도 노이즈 엔진을 사용합니다.
                 first_time = unique_times[0]
                 init_data = anim_base[anim_base['시간'] == first_time]
-                
+                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
+
                 fig_anim = go.Figure()
 
                 # 공항 배경 이미지 레이아웃 탑재
                 fig_anim.add_layout_image(dict(
                     source=img, xref="x", yref="y", x=0, y=0, 
                     sizex=img_width, sizey=img_height, 
-                    sizing="stretch", opacity=0.75, layer="below"
+                    sizing="stretch", opacity=0.8, layer="below"
                 ))
 
-                # 3. 경량화된 밀도 레이어 주입 (초기 프레임)
-                # 데이터가 없는 곳은 연산하지 않아 용량이 엄청나게 가벼워집니다.
-                max_people = anim_base['num_people'].max() if anim_base['num_people'].max() > 0 else 1.0
-                
-                fig_anim.add_trace(go.Densitymapbox(
-                    lat=init_data['y'],  # 이미지 좌표계를 평면 맵 좌표로 매핑
-                    lon=init_data['x'],
-                    z=init_data['num_people'],
-                    radius=45,           # 🌟 중요: 이 숫자가 중심점 기준 은은하게 번지는 안개의 반지름(Pixel)입니다!
-                    colorscale="YlOrRd",
-                    zmin=0,
-                    zmax=max_people,
-                    opacity=0.6,
-                    showscale=True,
-                    colorbar=dict(title="인파 밀도 지수", thickness=15, len=0.8)
+                # 2. 🌟 [은은함의 치트키] 커스텀 안개형 컬러 스케일 설계
+                # 0(사람 없음)일 때는 완전히 투명하고, 커질수록 노랑->주황->진한 빨강으로 스며드는 그라데이션
+                custom_blur_scale = [
+                    [0.0, 'rgba(255,255,255,0)'],     # 데이터가 낮으면 완전히 투명하게 뭉갬 (안개 효과)
+                    [0.3, 'rgba(254,224,144,0.4)'],   # 노스팟 은은하게 스며들기
+                    [0.6, 'rgba(253,141,60,0.6)'],    # 중간 주황빛 번짐
+                    [1.0, 'rgba(215,48,39,0.8)']       # 핫스팟 중심부 진한 레드
+                ]
+
+                # 3. 기본 트레이스 주입 (Scatter 기반이라 용량이 몇 KB 수준으로 매우 가벼움)
+                fig_anim.add_trace(go.Scatter(
+                    x=init_data['x'], y=init_data['y'], 
+                    mode='markers+text',
+                    marker=dict(
+                        size=init_data['num_people'], 
+                        sizemode='area', 
+                        sizeref=2. * max_people_val / (90**2), # 🌟 이 숫자를 키우면 안개 번짐 반경이 더 넓어집니다!
+                        color=init_data['num_people'], 
+                        colorscale=custom_blur_scale,  # 우리가 만든 은은한 그라데이션 적용
+                        cmin=0, cmax=max_people_val,
+                        line=dict(width=0),            # 딱딱한 테두리선 완벽 제거
+                        showscale=True,
+                        colorbar=dict(title="혼잡 인원 (명)", thickness=15, len=0.8)
+                    ),
+                    text=init_data['area'], 
+                    textfont=dict(size=11, color="white", family="Malgun Gothic"), 
+                    textposition="top center"
                 ))
 
-                # 4. 고속 애니메이션 프레임 구축 (좌표 리스트만 담아서 용량 최소화)
+                # 4. 고속 애니메이션 프레임 가속 엔진 빌드 (용량이 작아 MessageSizeError 절대 없음)
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
                     frames.append(go.Frame(
-                        data=[go.Densitymapbox(
-                            lat=t_data['y'],
-                            lon=t_data['x'],
-                            z=t_data['num_people'],
-                            radius=45
+                        data=[go.Scatter(
+                            x=t_data['x'], 
+                            y=t_data['y'], 
+                            mode='markers+text',
+                            marker=dict(
+                                size=t_data['num_people'],
+                                sizemode='area',
+                                sizeref=2. * max_people_val / (90**2),
+                                color=t_data['num_people'],
+                                colorscale=custom_blur_scale,
+                                cmin=0, cmax=max_people_val,
+                                line=dict(width=0)
+                            ),
+                            text=t_data['area'],
+                            textfont=dict(size=11, color="white", family="Malgun Gothic"),
+                            textposition="top center"
                         )],
                         name=t
                     ))
                 fig_anim.frames = frames
 
-                # 5. 🕹️ 렉 없이 부드럽게 흐르는 컨트롤러 레이아웃
-                # 격자 데이터를 안 보내기 때문에 브라우저 리로딩 없이 시간 축이 휙휙 넘어갑니다.
+                # 5. 🕹️ 렉 없이 부드럽게 흐르는 컨트롤러 셋업
                 fig_anim.update_layout(
-                    mapbox=dict(
-                        style="white-bg", # 배경 지도를 지우고 공항 도면만 보이게 처리
-                        west=0, east=img_width, south=img_height, north=0,
-                        layers=[]
-                    ),
                     template="plotly_dark",
                     height=650,
                     margin=dict(l=10, r=10, b=10, t=40),
@@ -144,9 +160,9 @@ if df is not None and coords is not None:
                                 "label": "▶️ Play (자동 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 200, "redraw": False}, # redraw=False로 두어 끊김 현상 원천 차단
+                                    "frame": {"duration": 100, "redraw": False}, # redraw=False로 리얼타임 가속
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 150, "easing": "cubic-in-out"} # 스무스하게 스며드는 전환
+                                    "transition": {"duration": 50, "easing": "quadratic-in-out"}
                                 }]
                             },
                             {
@@ -174,7 +190,7 @@ if df is not None and coords is not None:
                     }]
                 )
 
-                # 이미지 뷰포트 영역 고정
+                # 좌표축 및 뷰포트 범위 단단히 고정
                 fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
                 fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True)
 
