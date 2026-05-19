@@ -62,7 +62,7 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (브라우저 내장 하드웨어 가속 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (Base64 이미지 주입 + 깜빡임 0% 완성본) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
         st.caption("💡 브라우저 자체 가속 엔진을 사용하여 새로고침 현상과 깜빡임을 완전히 박멸한 버전입니다.")
@@ -74,16 +74,23 @@ if df is not None and coords is not None:
         unique_times = sorted(anim_data['시간'].unique())
 
         if os.path.exists(bg_img_path):
-            # 2. 이미지 가로세로 해상도 추출
+            # 2. [추가] 이미지를 Base64 텍스트로 변환하여 자바스크립트에 주입할 준비
+            import base64
+            from io import BytesIO
+            
             img = Image.open(bg_img_path)
             img_width, img_height = img.size
             
-            grid_x = np.linspace(0, img_width, 35)  # 속도 최적화를 위해 격자 살짝 조절
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
+            
+            # 3. 속도 최적화를 위한 격자 설정
+            grid_x = np.linspace(0, img_width, 35)
             grid_y = np.linspace(0, img_height, 22)
             X, Y = np.meshgrid(grid_x, grid_y)
 
-            # 3. [핵심] 모든 시간대의 Z 매트릭스 데이터를 파이썬 사전 가속 연산
-            # 이 데이터를 통째로 자바스크립트로 넘겨서 브라우저 안에서만 돌립니다.
+            # 4. 모든 시간대의 Z 매트릭스 데이터를 파이썬 사전 가속 연산
             all_frames_data = {}
             for t in unique_times:
                 t_data = anim_data[anim_data['시간'] == t]
@@ -94,16 +101,14 @@ if df is not None and coords is not None:
                         dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
                         Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
                 
-                # JSON 변환이 가능하도록 리스트 형태로 압축 변환
                 all_frames_data[t] = Z.tolist()
 
-            # 4. Streamlit에서 사용할 수 있도록 대용량 JSON 데이터 바인딩
+            # 5. JSON 변환
             import json
             json_matrix_data = json.dumps(all_frames_data)
             json_times = json.dumps(unique_times)
 
             # --- [치트키] 순수 HTML5 + Plotly.js 독립 모듈 주입 ---
-            # Streamlit 내부가 아닌 독립된 iframe 샌드박스에서 돌기 때문에 새로고침 느낌이 아예 사라집니다.
             html_code = f"""
             <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
             <div style="background-color: #111; color: #fff; padding: 10px; border-radius: 8px; font-family: sans-serif;">
@@ -125,7 +130,6 @@ if df is not None and coords is not None:
                 let isPlaying = false;
                 let intervalId = null;
 
-                // 초기 데이터 빌드
                 const initTime = timeList[0];
                 const initZ = matrixData[initTime];
 
@@ -154,7 +158,8 @@ if df is not None and coords is not None:
                     plot_bgcolor: '#111',
                     margin: {{ l: 5, r: 5, b: 5, t: 5 }},
                     images: [{{
-                        source: 'data:image/png;base64,', // 스트림릿의 로컬 이미지는 경로 보안이 걸리므로 stretch 적용
+                        // 💡 핵심 수정: 변환된 Base64 데이터 스트링을 소스로 직접 바인딩
+                        source: 'data:image/png;base64,{img_base64}',
                         xref: 'x', yref: 'y',
                         x: 0, y: 0,
                         sizex: {img_width}, sizey: {img_height},
@@ -167,13 +172,13 @@ if df is not None and coords is not None:
                 // 차트 최초 로드
                 Plotly.newPlot('chartDiv', [trace], layout, {{ displayModeBar: false }});
 
-                // 프레임 업데이트 함수 (Restyle을 쓰기 때문에 절대 화면이 깜빡이지 않습니다)
+                // 프레임 업데이트 함수
                 function updateFrame() {{
                     currentIdx = (currentIdx + 1) % timeList.length;
                     const t = timeList[currentIdx];
                     document.getElementById('timeLabel').innerText = t;
                     
-                    // 💡 핵심: newPlot을 쓰지 않고 'restyle' 함수로 픽셀 데이터만 변환하여 깜빡임 완벽 소멸
+                    // restyle로 데이터 영역만 갱신 (화면 깜빡임 원천 차단)
                     Plotly.restyle('chartDiv', {{ z: [matrixData[t]] }}, [0]);
                 }}
 
@@ -182,7 +187,7 @@ if df is not None and coords is not None:
                     isPlaying = !isPlaying;
                     if(isPlaying) {{
                         this.innerText = "⏸️ 재생 일시정지";
-                        intervalId = setInterval(updateFrame, 80); // 0.08초마다 부드럽게 새로고침 효과 없이 이동
+                        intervalId = setInterval(updateFrame, 80); // 0.08초 간격 부드러운 재생
                     }} else {{
                         this.innerText = "▶️ 재생 시작";
                         clearInterval(intervalId);
@@ -191,7 +196,7 @@ if df is not None and coords is not None:
             </script>
             """
             
-            # HTML 컴포넌트를 사용하여 독립 공간에 표출 (Streamlit 전체 랙 유발 요소 전면 제거)
+            # HTML 컴포넌트 렌더링
             import streamlit.components.v1 as components
             components.html(html_code, height=580, scrolling=False)
 
