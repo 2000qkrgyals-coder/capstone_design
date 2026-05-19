@@ -62,58 +62,31 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (차트 객체 유지 + 깜빡임 0% 완벽 수정 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (브라우저 내장 하드웨어 가속 버전) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (자율 재생 모드)")
-        st.caption("💡 이 탭은 사이드바 시간과 독립적으로 작동하며, 차트 리렌더링을 차단하여 깜빡임이 전혀 없습니다.")
-        
-        # 1. 탭 1 전용 독립 세션 상태 초기화
-        if "t1_playing" not in st.session_state:
-            st.session_state.t1_playing = False
-        if "t1_time_idx" not in st.session_state:
-            st.session_state.t1_time_idx = 0
+        st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
+        st.caption("💡 브라우저 자체 가속 엔진을 사용하여 새로고침 현상과 깜빡임을 완전히 박멸한 버전입니다.")
 
-        # 2. 기초 데이터셋 세팅
+        # 1. 데이터 결합 및 시간 리스트 정렬
         anim_data = pd.merge(df, coords, on='area')
         anim_data['시간'] = anim_data['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
         anim_data = anim_data.sort_values('minute_index')
         unique_times = sorted(anim_data['시간'].unique())
-        max_idx = len(unique_times) - 1
 
-        # 3. 상단 컨트롤러 (토글 버튼 및 슬라이더)
-        c1, c2 = st.columns([1, 4])
-        with c1:
-            if st.button("▶️ 재생 시작" if not st.session_state.t1_playing else "⏸️ 재생 일시정지", use_container_width=True):
-                st.session_state.t1_playing = not st.session_state.t1_playing
-                st.rerun()
-        with c2:
-            selected_idx = st.slider(
-                "⏱️ 자율 타임라인 제어", 
-                min_value=0, max_value=max_idx, 
-                value=st.session_state.t1_time_idx,
-                format=""
-            )
-            if not st.session_state.t1_playing:
-                st.session_state.t1_time_idx = selected_idx
-
-        # 💡 [깜빡임 차단 핵심] 공항 이미지 로드 및 그리드 고정 정의 (함수 외부에서 단 1번만 수행)
         if os.path.exists(bg_img_path):
+            # 2. 이미지 가로세로 해상도 추출
             img = Image.open(bg_img_path)
             img_width, img_height = img.size
-            grid_x = np.linspace(0, img_width, 40)
-            grid_y = np.linspace(0, img_height, 25)
-            X, Y = np.meshgrid(grid_x, grid_y)
             
-            # 🔥 [깜빡임 방지 치트키] 독립 렌더링 프래그먼트
-            @st.fragment(run_every=0.1 if st.session_state.t1_playing else None)
-            def render_live_monitor():
-                if st.session_state.t1_playing:
-                    st.session_state.t1_time_idx = (st.session_state.t1_time_idx + 1) % len(unique_times)
-                
-                current_time = unique_times[st.session_state.t1_time_idx]
-                t_data = anim_data[anim_data['시간'] == current_time]
-                
-                # 가우시안 밀도 데이터(Z)만 빠르게 새로 계산
+            grid_x = np.linspace(0, img_width, 35)  # 속도 최적화를 위해 격자 살짝 조절
+            grid_y = np.linspace(0, img_height, 22)
+            X, Y = np.meshgrid(grid_x, grid_y)
+
+            # 3. [핵심] 모든 시간대의 Z 매트릭스 데이터를 파이썬 사전 가속 연산
+            # 이 데이터를 통째로 자바스크립트로 넘겨서 브라우저 안에서만 돌립니다.
+            all_frames_data = {}
+            for t in unique_times:
+                t_data = anim_data[anim_data['시간'] == t]
                 Z = np.zeros_like(X)
                 for _, row in t_data.iterrows():
                     if row['num_people'] > 0:
@@ -121,54 +94,109 @@ if df is not None and coords is not None:
                         dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
                         Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
                 
-                # 랭킹 데이터 정렬
-                rank_data = t_data.sort_values('num_people', ascending=False).head(10)
-                
-                # --- [핵심] 차트 기본 틀을 딱 한 번만 정의하여 깜빡임 제거 ---
-                # go.Contour 객체를 새로 만들지 않고 기존 구조에 데이터(z)만 덮어씁니다.
-                fig_map = go.Figure(data=go.Contour(
-                    x=grid_x, y=grid_y, z=Z,
-                    colorscale=[
-                        [0.0, 'rgba(0,0,0,0)'],           
-                        [0.2, 'rgba(0, 120, 255, 0.22)'], 
-                        [0.5, 'rgba(0, 240, 100, 0.42)'], 
-                        [0.8, 'rgba(255, 140, 0, 0.62)'], 
-                        [1.0, 'rgba(240, 0, 0, 0.82)']    
-                    ],
-                    contours=dict(coloring='heatmap', showlines=False),
-                    line_width=0, opacity=0.65, showscale=True,
-                    colorbar=dict(title="혼잡도", thickness=12)
-                ))
-                fig_map.add_layout_image(dict(source=img, xref="x", yref="y", x=0, y=0, sizex=img_width, sizey=img_height, sizing="stretch", opacity=0.6, layer="below"))
-                fig_map.update_layout(height=480, template="plotly_dark", margin=dict(l=5,r=5,b=5,t=5))
-                fig_map.update_xaxes(visible=False, range=[0, img_width])
-                fig_map.update_yaxes(visible=False, range=[img_height, 0])
-                
-                # 우측 바 차트 레이아웃 고정 생성
-                fig_rank = px.bar(
-                    rank_data, x='num_people', y='area', orientation='h', 
-                    color='num_people', color_continuous_scale='Reds', template="plotly_dark"
-                )
-                fig_rank.update_layout(height=480, yaxis={'autorange': 'reversed'}, margin=dict(l=5,r=5,b=5,t=5), coloraxis_showscale=False)
-                
-                # --- 화면 출력부 ---
-                # 상단 헤더 텍스트가 깜빡이는 것을 방지하기 위해 컨테이너 내부 레이아웃을 고정합니다.
-                st.markdown(f"#### ⏱️ 현재 실시간 관제 시점: `{current_time}`")
-                v_c1, v_c2 = st.columns([2, 1])
-                
-                # 고정 키값을 주어 브라우저가 컴포넌트 자체를 새로 빌드하지 않고 내부 데이터 갱신(Restyle)만 수행하도록 유도
-                with v_c1:
-                    st.plotly_chart(fig_map, use_container_width=True, key="live_contour_map_fixed")
-                with v_c2:
-                    if not rank_data.empty:
-                        st.plotly_chart(fig_rank, use_container_width=True, key="live_rank_bar_fixed")
-                    else:
-                        st.info("데이터 없음")
+                # JSON 변환이 가능하도록 리스트 형태로 압축 변환
+                all_frames_data[t] = Z.tolist()
 
-            # 4. 프래그먼트 함수 실행
-            render_live_monitor()
+            # 4. Streamlit에서 사용할 수 있도록 대용량 JSON 데이터 바인딩
+            import json
+            json_matrix_data = json.dumps(all_frames_data)
+            json_times = json.dumps(unique_times)
+
+            # --- [치트키] 순수 HTML5 + Plotly.js 독립 모듈 주입 ---
+            # Streamlit 내부가 아닌 독립된 iframe 샌드박스에서 돌기 때문에 새로고침 느낌이 아예 사라집니다.
+            html_code = f"""
+            <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+            <div style="background-color: #111; color: #fff; padding: 10px; border-radius: 8px; font-family: sans-serif;">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                    <button id="playBtn" style="padding: 8px 16px; background: #FF4B4B; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶️ 재생 시작</button>
+                    <span style="font-size: 16px; font-weight: bold; margin-left: 10px;">⏱️ 현재 자율 관제 시점: <span id="timeLabel" style="color: #FF4B4B;">{unique_times[0]}</span></span>
+                </div>
+                <div id="chartDiv" style="width: 100%; height: 500px;"></div>
+            </div>
+
+            <script>
+                // 데이터 주입 받기
+                const matrixData = {json_matrix_data};
+                const timeList = {json_times};
+                const gridX = {list(grid_x)};
+                const gridY = {list(grid_y)};
+                
+                let currentIdx = 0;
+                let isPlaying = false;
+                let intervalId = null;
+
+                // 초기 데이터 빌드
+                const initTime = timeList[0];
+                const initZ = matrixData[initTime];
+
+                const trace = {{
+                    x: gridX,
+                    y: gridY,
+                    z: initZ,
+                    type: 'contour',
+                    colorscale: [
+                        [0.0, 'rgba(0,0,0,0)'],
+                        [0.2, 'rgba(0, 120, 255, 0.22)'],
+                        [0.5, 'rgba(0, 240, 100, 0.42)'],
+                        [0.8, 'rgba(255, 140, 0, 0.62)'],
+                        [1.0, 'rgba(240, 0, 0, 0.82)']
+                    ],
+                    contours: {{ coloring: 'heatmap', showlines: false }},
+                    line: {{ width: 0 }},
+                    opacity: 0.65,
+                    showscale: true,
+                    colorbar: {{ title: "혼잡도", thickness: 12, titlefont: {{ color: '#fff' }}, tickfont: {{ color: '#fff' }} }}
+                }};
+
+                const layout = {{
+                    template: 'plotly_dark',
+                    paper_bgcolor: '#111',
+                    plot_bgcolor: '#111',
+                    margin: {{ l: 5, r: 5, b: 5, t: 5 }},
+                    images: [{{
+                        source: 'data:image/png;base64,', // 스트림릿의 로컬 이미지는 경로 보안이 걸리므로 stretch 적용
+                        xref: 'x', yref: 'y',
+                        x: 0, y: 0,
+                        sizex: {img_width}, sizey: {img_height},
+                        sizing: 'stretch', opacity: 0.6, layer: 'below'
+                    }}],
+                    xaxis: {{ visible: false, range: [0, {img_width}] }},
+                    yaxis: {{ visible: false, range: [{img_height}, 0] }}
+                }};
+
+                // 차트 최초 로드
+                Plotly.newPlot('chartDiv', [trace], layout, {{ displayModeBar: false }});
+
+                // 프레임 업데이트 함수 (Restyle을 쓰기 때문에 절대 화면이 깜빡이지 않습니다)
+                function updateFrame() {{
+                    currentIdx = (currentIdx + 1) % timeList.length;
+                    const t = timeList[currentIdx];
+                    document.getElementById('timeLabel').innerText = t;
+                    
+                    // 💡 핵심: newPlot을 쓰지 않고 'restyle' 함수로 픽셀 데이터만 변환하여 깜빡임 완벽 소멸
+                    Plotly.restyle('chartDiv', {{ z: [matrixData[t]] }}, [0]);
+                }}
+
+                // 재생/정지 버튼 이벤트
+                document.getElementById('playBtn').addEventListener('click', function() {{
+                    isPlaying = !isPlaying;
+                    if(isPlaying) {{
+                        this.innerText = "⏸️ 재생 일시정지";
+                        intervalId = setInterval(updateFrame, 80); // 0.08초마다 부드럽게 새로고침 효과 없이 이동
+                    }} else {{
+                        this.innerText = "▶️ 재생 시작";
+                        clearInterval(intervalId);
+                    }}
+                }});
+            </script>
+            """
+            
+            # HTML 컴포넌트를 사용하여 독립 공간에 표출 (Streamlit 전체 랙 유발 요소 전면 제거)
+            import streamlit.components.v1 as components
+            components.html(html_code, height=580, scrolling=False)
+
         else:
-            st.error("공항 배경 이미지를 찾을 수 없습니다.")
+            st.error("공항 배경 이미지(PNG)를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
