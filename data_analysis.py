@@ -62,7 +62,7 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-  # --- [TAB 1] 실시간 통합 관제 (은은하고 자연스러운 안개형 히트맵 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (에러 없는 초경량 가우시안 히트맵 모드) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (은은한 밀도 맵 애니메이션)")
         st.caption("💡 ▶️ Play 버튼을 누르면 인파의 흐름이 경계선 없이 연기처럼 부드럽고 은은하게 번지며 자율 재생됩니다.")
@@ -93,34 +93,31 @@ if df is not None and coords is not None:
                     sizing="stretch", opacity=0.7, layer="below"
                 ))
 
-                # 2. 🌟 [은은함의 핵심] Contour(등고선) 기법을 활용한 가우시안 번짐 효과 연출
-                # 딱딱한 마커 대신 경계선을 지우고(showlines=False) 부드러운 평면 스무딩을 적용합니다.
-                fig_anim.add_trace(go.Contour(
+                # 2. 🌟 [은은함의 결정체] Heatmap + zsmooth='best' 기법 사용
+                # 별도의 복잡한 등고선 명세 없이 픽셀 간 단차를 완벽한 수채화처럼 부드럽게 뭉개줍니다.
+                fig_anim.add_trace(go.Heatmap(
                     x=init_data['x'],
                     y=init_data['y'],
                     z=init_data['num_people'],
-                    connectgaps=True,
-                    line_width=0,          # 경계선 두께 0으로 픽셀 단차 제거
-                    showlines=False,       # 등고선 윤곽선 숨기기 (안개 효과)
-                    contours=dict(coloring='heatmap', smoothing=1.3), # 최고 수준의 스무딩 가중치 적용
-                    colorscale='Reds',     # 은은하게 물드는 붉은 단색조 그라데이션 테마
+                    zsmooth='best',        # ◀ 파이썬이 지원하는 가장 부드러운 안개형 가우시안 블러 필터
+                    colorscale='Reds',     # 은은하게 컴컴한 다크 모드와 어울리는 붉은 핫스팟 테마
                     zmin=0,
                     zmax=max_people_val,
-                    opacity=0.55,          # 배경 도면이 비쳐 보이도록 투명도 최적화
+                    opacity=0.6,           # 배경 도면과 자연스럽게 겹치도록 투명도 최적화
                     showscale=True,
                     colorbar=dict(title="혼잡 밀도", thickness=15, len=0.8)
                 ))
 
-                # 3. 고속 프레임 엔진 구축 (시간별 부드러운 상태 변화 매핑)
+                # 3. 고속 프레임 엔진 구축
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
                     frames.append(go.Frame(
-                        data=[go.Contour(
+                        data=[go.Heatmap(
                             x=t_data['x'],
                             y=t_data['y'],
                             z=t_data['num_people'],
-                            contours=dict(coloring='heatmap', smoothing=1.3)
+                            zsmooth='best'  # 프레임 전환 시에도 은은함 유지
                         )],
                         name=t
                     ))
@@ -138,9 +135,9 @@ if df is not None and coords is not None:
                                 "label": "▶️ Play (자율 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 150, "redraw": True}, # 은은한 변화를 감상할 수 있는 최적의 속도
+                                    "frame": {"duration": 120, "redraw": True}, 
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 100, "easing": "linear"} # 끊김 없이 서서히 물드는 리니어 전환
+                                    "transition": {"duration": 80, "easing": "linear"} # 물들듯이 자연스러운 스왑
                                 }]
                             },
                             {
