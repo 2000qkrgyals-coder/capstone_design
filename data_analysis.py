@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from PIL import Image
 import os
+from scipy.ndimage import gaussian_filter
 import math
 
 # --- 0. 페이지 설정 ---
