@@ -63,7 +63,7 @@ if df is not None and coords is not None:
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
-  # --- [TAB 1] 실시간 통합 관제 (오타 수정 + 초고속 60fps 애니메이션 모드) ---
+  # --- [TAB 1] 실시간 통합 관제 (Plotly 속성 에러 완벽 해결 버전) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
         st.caption("💡 ▶️ Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 비디오처럼 깜빡임 없이 자동 재생됩니다.")
@@ -77,7 +77,6 @@ if df is not None and coords is not None:
             anim_base = anim_base.sort_values('minute_index')
             unique_times = sorted(anim_base['시간'].unique())
 
-            # 데이터가 비어있을 경우를 위한 방어 코드
             if anim_base.empty:
                 st.warning("관제 데이터가 존재하지 않습니다.")
             else:
@@ -102,7 +101,7 @@ if df is not None and coords is not None:
                         sizemode='area', 
                         sizeref=2. * max_people_val / (45**2),
                         color=init_data['num_people'], 
-                        colorscale='Jet',  # 발표용 가장 화려한 스케일
+                        colorscale='Jet',  # 발표장에서 가장 화려하고 직관적인 컬러풀 테마
                         showscale=True,
                         cmin=0, cmax=max_people_val,
                         colorbar=dict(title="혼잡 인원 (명)", thickness=15)
@@ -142,7 +141,7 @@ if df is not None and coords is not None:
                                 "label": "▶️ Play (자동 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 50, "redraw": False}, # 0.05초 단위로 더 부드럽고 빠르게 흐름
+                                    "frame": {"duration": 50, "redraw": False}, # 0.05초 단위 초고속 프레임 스왑
                                     "fromcurrent": True, 
                                     "transition": {"duration": 20, "easing": "quadratic-in-out"}
                                 }]
@@ -159,8 +158,12 @@ if df is not None and coords is not None:
                     sliders=[{
                         "active": 0,
                         "yanchor": "top", "xanchor": "left",
-                        # ⭕ [에러 해결] position 값을 top left로 명확하게 수정했습니다.
-                        "currentvalue": {"font": {"size": 16, "color": "#FF4B4B"}, "prefix": "⏱️ 관제 시점: ", "visible": True, "position": "top left"},
+                        # 🔥 [에러 해결] 에러의 원인이 되던 유효하지 않은 "position" 필드를 완전히 도려내어 검증을 통과시킵니다.
+                        "currentvalue": {
+                            "font": {"size": 16, "color": "#FF4B4B"}, 
+                            "prefix": "⏱️ 관제 시점: ", 
+                            "visible": True
+                        },
                         "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
                         "steps": [{
                             "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
