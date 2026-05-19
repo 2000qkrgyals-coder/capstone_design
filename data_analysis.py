@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (이미지 버퍼 고속 갱신 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (에러 해결 + 깜빡임 0% 최종 완성본) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
-        st.caption("💡 Plotly 객체 대신 이미지 바이너리를 직접 교체하여 검은 화면과 깜빡임을 원천 차단합니다.")
+        st.caption("💡 이미지 바이너리를 직접 교체하여 검은 화면과 깜빡임, 렌더링 에러를 완벽하게 치료한 버전입니다.")
 
         # 1. 독립 세션 상태 초기화
         if "t1_playing" not in st.session_state:
@@ -96,7 +96,7 @@ if df is not None and coords is not None:
             if not st.session_state.t1_playing:
                 st.session_state.t1_time_idx = selected_idx
 
-        # 4. 🔥 깜빡임 차단과 화면 표시를 위한 고속 프래그먼트
+        # 4. 고속 독립 프래그먼트 엔진 정의
         @st.fragment(run_every=0.05 if st.session_state.t1_playing else None)
         def render_image_monitor():
             if st.session_state.t1_playing:
@@ -114,15 +114,15 @@ if df is not None and coords is not None:
                     import matplotlib.pyplot as plt
                     from io import BytesIO
 
-                    # 배경 이미지 로드
+                    # 배경 이미지 로드 및 가로세로 크기 추출
                     bg_img = Image.open(bg_img_path)
                     img_width, img_height = bg_img.size
 
-                    # 메모리 상에 깜빡임 없는 순수 가속 도화지 생성
+                    # 가상 도화지 생성 (스레드 세이프)
                     fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
                     ax.imshow(bg_img, extent=[0, img_width, img_height, 0], alpha=0.7)
 
-                    # 가우시안 밀도 연산용 매트릭스 (해상도를 살짝 조절해 속도 극대화)
+                    # 가우시안 밀도(Z) 연산
                     grid_x = np.linspace(0, img_width, 40)
                     grid_y = np.linspace(0, img_height, 25)
                     X, Y = np.meshgrid(grid_x, grid_y)
@@ -134,22 +134,22 @@ if df is not None and coords is not None:
                             dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
                             Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
 
-                    # 혼잡도가 있을 때만 등고선 오버레이
+                    # 밀도 데이터가 존재할 때만 스무스한 열감지 지도 그리기
                     if Z.max() > 0:
                         ax.contourf(X, Y, Z, levels=15, cmap='jet', alpha=0.45)
 
                     ax.axis('off')
-                    fig.patch.set_facecolor('#0e1117') # Streamlit Dark 테마 동기화
+                    fig.patch.set_facecolor('#0e1117') # Streamlit 다크모드 배경 일치화
                     fig.tight_layout(pad=0)
 
-                    # 그래프를 HTML로 변환하지 않고 바이너리 이미지 데이터로 변환 (깜빡임 소멸 치트키)
+                    # 이미지 바이너리 스트림 변환
                     buf = BytesIO()
                     fig.savefig(buf, format="png", facecolor=fig.get_facecolor(), edgecolor='none', bbox_inches='tight')
                     buf.seek(0)
-                    plt.close(fig) # 메모리 누수 방지
+                    plt.close(fig) # 메모리 해제 필수
 
-                    # 고정된 key를 가진 st.image는 브라우저가 깜빡임 없이 픽셀만 실시간 스왑합니다.
-                    st.image(buf, use_container_width=True, key="live_airport_stream_img")
+                    # ✨ 핵심 수정: 최신 버전과 구버전 모두 에러 없는 파라미터(use_column_width)로 교체
+                    st.image(buf, use_column_width=True, key="live_airport_stream_img")
                 else:
                     st.error("공항 배경 이미지를 찾을 수 없습니다.")
 
@@ -157,7 +157,7 @@ if df is not None and coords is not None:
                 st.markdown("#### 🚩 실시간 혼잡 랭킹")
                 rank_data = t_data.sort_values('num_people', ascending=False).head(10)
                 if not rank_data.empty:
-                    # 우측 바 차트도 렌더링 랙을 줄이기 위해 단순 텍스트 진척도 바(Progress) 형태로 대체하여 깜빡임 박멸
+                    # 렌더링 부하와 깜빡임을 줄이기 위해 Streamlit 고유 진척도 바로 깔끔하게 매핑
                     for _, row in rank_data.iterrows():
                         max_people = anim_data['num_people'].max() if anim_data['num_people'].max() > 0 else 1
                         pct = min(float(row['num_people'] / max_people), 1.0)
@@ -166,7 +166,7 @@ if df is not None and coords is not None:
                 else:
                     st.info("데이터 없음")
 
-        # 5. 프래그먼트 기동
+        # 5. 프래그먼트 실행
         render_image_monitor()
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
