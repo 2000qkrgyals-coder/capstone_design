@@ -63,120 +63,121 @@ if df is not None and coords is not None:
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
-  # --- [TAB 1] 실시간 통합 관제 (발표용 초고속 자동 재생 버전) ---
+  # --- [TAB 1] 실시간 통합 관제 (오타 수정 + 초고속 60fps 애니메이션 모드) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
-        st.caption("💡 하단의 Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 깜빡임 없이 비디오처럼 자율 재생됩니다.")
+        st.caption("💡 ▶️ Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 비디오처럼 깜빡임 없이 자동 재생됩니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
             
-            # 1. 애니메이션용 타임라인 전체 데이터 병합 및 정렬
+            # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
             anim_base = pd.merge(df, coords, on='area')
             anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
             anim_base = anim_base.sort_values('minute_index')
             unique_times = sorted(anim_base['시간'].unique())
 
-            # 2. Plotly 베이스 피규어 생성 (첫 번째 시점 데이터로 기본 틀 구성)
-            first_time = unique_times[0]
-            init_data = anim_base[anim_base['시간'] == first_time]
+            # 데이터가 비어있을 경우를 위한 방어 코드
+            if anim_base.empty:
+                st.warning("관제 데이터가 존재하지 않습니다.")
+            else:
+                first_time = unique_times[0]
+                init_data = anim_base[anim_base['시간'] == first_time]
+                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
 
-            fig_anim = go.Figure()
+                fig_anim = go.Figure()
 
-            # 공항 배경 이미지 레이아웃 탑재
-            fig_anim.add_layout_image(dict(
-                source=img, xref="x", yref="y", x=0, y=0, 
-                sizex=img.size[0], sizey=img.size[1], 
-                sizing="stretch", opacity=0.6, layer="below"
-            ))
-
-            # 기본 혼잡도 트레이스 (점 크기와 색상으로 화려하게 표현)
-            fig_anim.add_trace(go.Scatter(
-                x=init_data['x'], y=init_data['y'], mode='markers+text',
-                marker=dict(
-                    size=init_data['num_people'], 
-                    sizemode='area', 
-                    sizeref=2. * max(anim_base['num_people']) / (45**2) if not anim_base.empty else 1,
-                    color=init_data['num_people'], 
-                    colorscale='Jet',  # 발표때 가장 눈에 띄고 화려한 무지개빛 불꽃 테마
-                    showscale=True,
-                    cmin=0, cmax=anim_base['num_people'].max(),
-                    colorbar=dict(title="혼잡 인원 (명)", thickness=15)
-                ),
-                text=init_data['area'], 
-                textfont=dict(size=11, color="white", family="sans-serif"), 
-                textposition="top center"
-            ))
-
-            # 3. 🔥 [핵심] 전체 시간대 프레임(Frames) 사전 빌드 (자바스크립트 가속)
-            frames = []
-            for t in unique_times:
-                t_data = anim_base[anim_base['시간'] == t]
-                frames.append(go.Frame(
-                    data=[go.Scatter(
-                        x=t_data['x'], 
-                        y=t_data['y'], 
-                        marker=dict(
-                            size=t_data['num_people'],
-                            color=t_data['num_people']
-                        ),
-                        text=t_data['area']
-                    )],
-                    name=t  # 각 프레임의 이름으로 시간 매핑
+                # 공항 배경 이미지 레이아웃 탑재
+                fig_anim.add_layout_image(dict(
+                    source=img, xref="x", yref="y", x=0, y=0, 
+                    sizex=img.size[0], sizey=img.size[1], 
+                    sizing="stretch", opacity=0.6, layer="below"
                 ))
-            fig_anim.frames = frames
 
-            # 4. 🕹️ 발표용 재생/일시정지 및 슬라이더 UI 주입
-            fig_anim.update_layout(
-                template="plotly_dark",
-                height=650,  # 발표 화면에서 시원하게 보이도록 높이 업그레이드
-                margin=dict(l=10, r=10, b=10, t=40),
-                updatemenus=[{
-                    "type": "buttons",
-                    "buttons": [
-                        {
-                            "label": "▶️ Play (자동 관제)",
-                            "method": "animate",
-                            "args": [None, {
-                                "frame": {"duration": 100, "redraw": False}, # 0.1초당 1분씩 초고속 흐름
-                                "fromcurrent": True, 
-                                "transition": {"duration": 50, "easing": "quadratic-in-out"} # 부드러운 스케일 전환효과
-                            }]
-                        },
-                        {
-                            "label": "⏸️ Pause",
-                            "method": "animate",
-                            "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
-                        }
-                    ],
-                    "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
-                    "x": 0.0, "xanchor": "left", "y": 1.08, "yanchor": "top"
-                }],
-                # 차트 하단에 마우스로 조절 가능한 타임라인 슬라이더 배치
-                sliders=[{
-                    "active": 0,
-                    "yanchor": "top", "xanchor": "left",
-                    "currentvalue": {"font": {"size": 16, "color": "#FF4B4B"}, "prefix": "⏱️ 관제 시점: ", "visible": True, "position": "top light"},
-                    "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
-                    "steps": [{
-                        "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
-                        "label": f.name, "method": "animate"
-                    } for f in frames]
-                }]
-            )
+                # 기본 혼잡도 트레이스 (Jet 테마로 화려한 불꽃 시각화)
+                fig_anim.add_trace(go.Scatter(
+                    x=init_data['x'], y=init_data['y'], mode='markers+text',
+                    marker=dict(
+                        size=init_data['num_people'], 
+                        sizemode='area', 
+                        sizeref=2. * max_people_val / (45**2),
+                        color=init_data['num_people'], 
+                        colorscale='Jet',  # 발표용 가장 화려한 스케일
+                        showscale=True,
+                        cmin=0, cmax=max_people_val,
+                        colorbar=dict(title="혼잡 인원 (명)", thickness=15)
+                    ),
+                    text=init_data['area'], 
+                    textfont=dict(size=11, color="white"), 
+                    textposition="top center"
+                ))
 
-            # 좌표축 숨기기 및 범위 고정
-            fig_anim.update_xaxes(visible=False, range=[0, img.size[0]])
-            fig_anim.update_yaxes(visible=False, range=[img.size[1], 0])
+                # 2. 고속 자바스크립트 가속 프레임 빌드
+                frames = []
+                for t in unique_times:
+                    t_data = anim_base[anim_base['시간'] == t]
+                    frames.append(go.Frame(
+                        data=[go.Scatter(
+                            x=t_data['x'], 
+                            y=t_data['y'], 
+                            marker=dict(
+                                size=t_data['num_people'],
+                                color=t_data['num_people']
+                            ),
+                            text=t_data['area']
+                        )],
+                        name=t
+                    ))
+                fig_anim.frames = frames
 
-            # 웹 가속 차트 출력
-            st.plotly_chart(fig_anim, use_container_width=True)
+                # 3. 🕹️ 재생 컨트롤러 및 타임라인 설정
+                fig_anim.update_layout(
+                    template="plotly_dark",
+                    height=650,  # 발표용 대화면 사이즈
+                    margin=dict(l=10, r=10, b=10, t=40),
+                    updatemenus=[{
+                        "type": "buttons",
+                        "buttons": [
+                            {
+                                "label": "▶️ Play (자동 관제)",
+                                "method": "animate",
+                                "args": [None, {
+                                    "frame": {"duration": 50, "redraw": False}, # 0.05초 단위로 더 부드럽고 빠르게 흐름
+                                    "fromcurrent": True, 
+                                    "transition": {"duration": 20, "easing": "quadratic-in-out"}
+                                }]
+                            },
+                            {
+                                "label": "⏸️ Pause",
+                                "method": "animate",
+                                "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                            }
+                        ],
+                        "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
+                        "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
+                    }],
+                    sliders=[{
+                        "active": 0,
+                        "yanchor": "top", "xanchor": "left",
+                        # ⭕ [에러 해결] position 값을 top left로 명확하게 수정했습니다.
+                        "currentvalue": {"font": {"size": 16, "color": "#FF4B4B"}, "prefix": "⏱️ 관제 시점: ", "visible": True, "position": "top left"},
+                        "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
+                        "steps": [{
+                            "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
+                            "label": f.name, "method": "animate"
+                        } for f in frames]
+                    }]
+                )
+
+                # 좌표축 숨기기 및 범위 잠금
+                fig_anim.update_xaxes(visible=False, range=[0, img.size[0]])
+                fig_anim.update_yaxes(visible=False, range=[img.size[1], 0])
+
+                # 최종 가속 차트 출력
+                st.plotly_chart(fig_anim, use_container_width=True)
             
         else:
             st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
-
-    # --- [TAB 2, 3, 4] 생략 공간 ---
-    # 질문자님의 원래 나머지 탭 코드가 하단에 그대로 이어지면 됩니다.
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
