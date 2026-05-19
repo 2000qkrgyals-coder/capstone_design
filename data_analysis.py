@@ -62,7 +62,131 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
+    # --- [TAB 1] 실시간 통합 관제 (화면 증발 현상 완벽 해결 버전) ---
+    with tab1:
+        st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 비디오처럼 깜빡임 없이 자동 재생됩니다.")
     
+        if os.path.exists(bg_img_path):
+            img = Image.open(bg_img_path)
+            img_width, img_height = img.size
+            
+            # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
+            anim_base = pd.merge(df, coords, on='area')
+            anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
+            anim_base = anim_base.sort_values('minute_index')
+            unique_times = sorted(anim_base['시간'].unique())
+    
+            if anim_base.empty:
+                st.warning("관제 데이터가 존재하지 않습니다.")
+            else:
+                first_time = unique_times[0]
+                init_data = anim_base[anim_base['시간'] == first_time]
+                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
+    
+                fig_anim = go.Figure()
+    
+                # 공항 배경 이미지 레이아웃 탑재
+                fig_anim.add_layout_image(dict(
+                    source=img, xref="x", yref="y", x=0, y=0, 
+                    sizex=img_width, sizey=img_height, 
+                    sizing="stretch", opacity=0.6, layer="below"
+                ))
+    
+                # 기본 혼잡도 트레이스 (Jet 테마로 화려한 불꽃 시각화)
+                fig_anim.add_trace(go.Scatter(
+                    x=init_data['x'], y=init_data['y'], mode='markers+text',
+                    marker=dict(
+                        size=init_data['num_people'], 
+                        sizemode='area', 
+                        sizeref=2. * max_people_val / (45**2),
+                        color=init_data['num_people'], 
+                        colorscale='Jet',  # 발표장에서 가장 화려하고 직관적인 컬러풀 테마
+                        showscale=True,
+                        cmin=0, cmax=max_people_val,
+                        colorbar=dict(title="혼잡 인원 (명)", thickness=15)
+                    ),
+                    text=init_data['area'], 
+                    textfont=dict(size=11, color="white"), 
+                    textposition="top center"
+                ))
+    
+                # 2. 🌟 [핵심 수정] 프레임 빌드 시 Scatter 스타일 속성 유지
+                frames = []
+                for t in unique_times:
+                    t_data = anim_base[anim_base['시간'] == t]
+                    frames.append(go.Frame(
+                        data=[go.Scatter(
+                            x=t_data['x'], 
+                            y=t_data['y'], 
+                            mode='markers+text',  # 프레임 전환 시에도 마커와 텍스트 형태 강제 유지
+                            marker=dict(
+                                size=t_data['num_people'],
+                                sizemode='area',
+                                sizeref=2. * max_people_val / (45**2),
+                                color=t_data['num_people'],
+                                colorscale='Jet',
+                                cmin=0, cmax=max_people_val
+                            ),
+                            text=t_data['area'],
+                            textfont=dict(size=11, color="white"),
+                            textposition="top center"
+                        )],
+                        name=t
+                    ))
+                fig_anim.frames = frames
+    
+                # 3. 🕹️ 재생 컨트롤러 및 타임라인 설정
+                fig_anim.update_layout(
+                    template="plotly_dark",
+                    height=650,  # 발표용 대화면 사이즈
+                    margin=dict(l=10, r=10, b=10, t=40),
+                    updatemenus=[{
+                        "type": "buttons",
+                        "buttons": [
+                            {
+                                "label": "▶️ Play (자동 관제)",
+                                "method": "animate",
+                                "args": [None, {
+                                    "frame": {"duration": 100, "redraw": True}, # 🌟 축 스케일링 붕괴 방지를 위해 redraw=True 설정
+                                    "fromcurrent": True, 
+                                    "transition": {"duration": 50, "easing": "quadratic-in-out"}
+                                }]
+                            },
+                            {
+                                "label": "⏸️ Pause",
+                                "method": "animate",
+                                "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                            }
+                        ],
+                        "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
+                        "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
+                    }],
+                    sliders=[{
+                        "active": 0,
+                        "yanchor": "top", "xanchor": "left",
+                        "currentvalue": {
+                            "font": {"size": 16, "color": "#FF4B4B"}, 
+                            "prefix": "⏱️ 관제 시점: ", 
+                            "visible": True
+                        },
+                        "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
+                        "steps": [{
+                            "args": [[f.name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
+                            "label": f.name, "method": "animate"
+                        } for f in frames]
+                    }]
+                )
+    
+                # 4. 🌟 [핵심 수정] 좌표축 범위 강제 고정 (오토스케일링 차단)
+                fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
+                fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True) # Y축 반전 상태 고정
+    
+                # 최종 가속 차트 출력
+                st.plotly_chart(fig_anim, use_container_width=True)
+            
+        else:
+            st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
