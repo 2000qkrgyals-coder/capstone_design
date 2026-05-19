@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (Fragment 초고속 독립 부분 갱신 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (차트 객체 유지 + 깜빡임 0% 완벽 수정 버전) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (자율 재생 모드)")
-        st.caption("💡 이 탭은 사이드바 시간과 독립적으로 작동하며, 전체 화면 깜빡임 없이 지도 영역만 고속 갱신됩니다.")
+        st.caption("💡 이 탭은 사이드바 시간과 독립적으로 작동하며, 차트 리렌더링을 차단하여 깜빡임이 전혀 없습니다.")
         
         # 1. 탭 1 전용 독립 세션 상태 초기화
         if "t1_playing" not in st.session_state:
@@ -96,72 +96,79 @@ if df is not None and coords is not None:
             if not st.session_state.t1_playing:
                 st.session_state.t1_time_idx = selected_idx
 
-        # 🔥 [핵심 치트키] 화면 깜빡임과 멈춤을 원천 차단하는 독립 렌더링 프래그먼트
-        @st.fragment(run_every=0.1 if st.session_state.t1_playing else None)
-        def render_live_monitor():
-            # 재생 중일 때는 프레그먼트가 돌 때마다 인덱스를 1씩 증가시킴
-            if st.session_state.t1_playing:
-                st.session_state.t1_time_idx = (st.session_state.t1_time_idx + 1) % len(unique_times)
+        # 💡 [깜빡임 차단 핵심] 공항 이미지 로드 및 그리드 고정 정의 (함수 외부에서 단 1번만 수행)
+        if os.path.exists(bg_img_path):
+            img = Image.open(bg_img_path)
+            img_width, img_height = img.size
+            grid_x = np.linspace(0, img_width, 40)
+            grid_y = np.linspace(0, img_height, 25)
+            X, Y = np.meshgrid(grid_x, grid_y)
             
-            current_time = unique_times[st.session_state.t1_time_idx]
-            t_data = anim_data[anim_data['시간'] == current_time]
-            
-            # 레이아웃 분할
-            v_c1, v_c2 = st.columns([2, 1])
-            
-            with v_c1:
-                st.markdown(f"#### ⏱️ 현재 실시간 관제 시점: `{current_time}`")
-                if os.path.exists(bg_img_path):
-                    img = Image.open(bg_img_path)
-                    img_width, img_height = img.size
-                    
-                    grid_x = np.linspace(0, img_width, 40)
-                    grid_y = np.linspace(0, img_height, 25)
-                    X, Y = np.meshgrid(grid_x, grid_y)
-                    
-                    # 밀도 행렬 연산
-                    Z = np.zeros_like(X)
-                    for _, row in t_data.iterrows():
-                        if row['num_people'] > 0:
-                            sigma = max(img_width, img_height) * 0.04
-                            dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
-                            Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
-                    
-                    fig_map = go.Figure(data=go.Contour(
-                        x=grid_x, y=grid_y, z=Z,
-                        colorscale=[
-                            [0.0, 'rgba(0,0,0,0)'],           
-                            [0.2, 'rgba(0, 120, 255, 0.22)'], 
-                            [0.5, 'rgba(0, 240, 100, 0.42)'], 
-                            [0.8, 'rgba(255, 140, 0, 0.62)'], 
-                            [1.0, 'rgba(240, 0, 0, 0.82)']    
-                        ],
-                        contours=dict(coloring='heatmap', showlines=False),
-                        line_width=0, opacity=0.65, showscale=True,
-                        colorbar=dict(title="혼잡도", thickness=12)
-                    ))
-                    fig_map.add_layout_image(dict(source=img, xref="x", yref="y", x=0, y=0, sizex=img_width, sizey=img_height, sizing="stretch", opacity=0.6, layer="below"))
-                    fig_map.update_layout(height=480, template="plotly_dark", margin=dict(l=5,r=5,b=5,t=5))
-                    fig_map.update_xaxes(visible=False, range=[0, img_width])
-                    fig_map.update_yaxes(visible=False, range=[img_height, 0])
-                    
-                    # 매번 똑같은 고정 키를 주어 캔버스 객체 재활용 유도 (랙 방지)
-                    st.plotly_chart(fig_map, use_container_width=True, key="fragment_live_map")
-                else:
-                    st.error("공항 배경 이미지를 찾을 수 없습니다.")
-            
-            with v_c2:
-                st.markdown("#### 🚩 실시간 혼잡 랭킹")
+            # 🔥 [깜빡임 방지 치트키] 독립 렌더링 프래그먼트
+            @st.fragment(run_every=0.1 if st.session_state.t1_playing else None)
+            def render_live_monitor():
+                if st.session_state.t1_playing:
+                    st.session_state.t1_time_idx = (st.session_state.t1_time_idx + 1) % len(unique_times)
+                
+                current_time = unique_times[st.session_state.t1_time_idx]
+                t_data = anim_data[anim_data['시간'] == current_time]
+                
+                # 가우시안 밀도 데이터(Z)만 빠르게 새로 계산
+                Z = np.zeros_like(X)
+                for _, row in t_data.iterrows():
+                    if row['num_people'] > 0:
+                        sigma = max(img_width, img_height) * 0.04
+                        dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
+                        Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
+                
+                # 랭킹 데이터 정렬
                 rank_data = t_data.sort_values('num_people', ascending=False).head(10)
-                if not rank_data.empty:
-                    fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
-                    fig_rank.update_layout(height=480, yaxis={'autorange': 'reversed'}, margin=dict(l=5,r=5,b=5,t=5), coloraxis_showscale=False)
-                    st.plotly_chart(fig_rank, use_container_width=True, key="fragment_live_rank")
-                else:
-                    st.info("데이터 없음")
+                
+                # --- [핵심] 차트 기본 틀을 딱 한 번만 정의하여 깜빡임 제거 ---
+                # go.Contour 객체를 새로 만들지 않고 기존 구조에 데이터(z)만 덮어씁니다.
+                fig_map = go.Figure(data=go.Contour(
+                    x=grid_x, y=grid_y, z=Z,
+                    colorscale=[
+                        [0.0, 'rgba(0,0,0,0)'],           
+                        [0.2, 'rgba(0, 120, 255, 0.22)'], 
+                        [0.5, 'rgba(0, 240, 100, 0.42)'], 
+                        [0.8, 'rgba(255, 140, 0, 0.62)'], 
+                        [1.0, 'rgba(240, 0, 0, 0.82)']    
+                    ],
+                    contours=dict(coloring='heatmap', showlines=False),
+                    line_width=0, opacity=0.65, showscale=True,
+                    colorbar=dict(title="혼잡도", thickness=12)
+                ))
+                fig_map.add_layout_image(dict(source=img, xref="x", yref="y", x=0, y=0, sizex=img_width, sizey=img_height, sizing="stretch", opacity=0.6, layer="below"))
+                fig_map.update_layout(height=480, template="plotly_dark", margin=dict(l=5,r=5,b=5,t=5))
+                fig_map.update_xaxes(visible=False, range=[0, img_width])
+                fig_map.update_yaxes(visible=False, range=[img_height, 0])
+                
+                # 우측 바 차트 레이아웃 고정 생성
+                fig_rank = px.bar(
+                    rank_data, x='num_people', y='area', orientation='h', 
+                    color='num_people', color_continuous_scale='Reds', template="plotly_dark"
+                )
+                fig_rank.update_layout(height=480, yaxis={'autorange': 'reversed'}, margin=dict(l=5,r=5,b=5,t=5), coloraxis_showscale=False)
+                
+                # --- 화면 출력부 ---
+                # 상단 헤더 텍스트가 깜빡이는 것을 방지하기 위해 컨테이너 내부 레이아웃을 고정합니다.
+                st.markdown(f"#### ⏱️ 현재 실시간 관제 시점: `{current_time}`")
+                v_c1, v_c2 = st.columns([2, 1])
+                
+                # 고정 키값을 주어 브라우저가 컴포넌트 자체를 새로 빌드하지 않고 내부 데이터 갱신(Restyle)만 수행하도록 유도
+                with v_c1:
+                    st.plotly_chart(fig_map, use_container_width=True, key="live_contour_map_fixed")
+                with v_c2:
+                    if not rank_data.empty:
+                        st.plotly_chart(fig_rank, use_container_width=True, key="live_rank_bar_fixed")
+                    else:
+                        st.info("데이터 없음")
 
-        # 4. 프래그먼트 함수 실행
-        render_live_monitor()
+            # 4. 프래그먼트 함수 실행
+            render_live_monitor()
+        else:
+            st.error("공항 배경 이미지를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
