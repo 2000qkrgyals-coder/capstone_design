@@ -62,133 +62,131 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
+# --- [TAB 1] 실시간 통합 관제 (화면 증발 현상 완벽 해결 버전) ---
+with tab1:
+    st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
+    st.caption("💡 ▶️ Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 비디오처럼 깜빡임 없이 자동 재생됩니다.")
 
-# --- [TAB 1] 실시간 통합 관제 (오류 수정 및 맵박스 락 안정화 버전) ---
-    with tab1:
-        st.title("📊 실시간 관제 현황 (Real Density Dynamic Heatmap)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역이 열화상 화면처럼 실시간으로 번지고 융합되며 흐릅니다.")
+    if os.path.exists(bg_img_path):
+        img = Image.open(bg_img_path)
+        img_width, img_height = img.size
+        
+        # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
+        anim_base = pd.merge(df, coords, on='area')
+        anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
+        anim_base = anim_base.sort_values('minute_index')
+        unique_times = sorted(anim_base['시간'].unique())
 
-        if os.path.exists(bg_img_path):
-            img = Image.open(bg_img_path)
-            img_width, img_height = img.size
-            
-            # 1. 데이터셋 결합 및 시간 정렬
-            anim_base = pd.merge(df, coords, on='area')
-            anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
-            anim_base = anim_base.sort_values('minute_index')
-            unique_times = sorted(anim_base['시간'].unique())
-
-            if anim_base.empty:
-                st.warning("관제 데이터가 존재하지 않습니다.")
-            else:
-                first_time = unique_times[0]
-                init_data = anim_base[anim_base['시간'] == first_time]
-                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
-
-                # 밀도 번짐 반경 설정 (화면 해상도 기준 최적화)
-                visual_radius = int(max(img_width, img_height) * 0.035) 
-
-                fig_anim = go.Figure()
-
-                # 2. Densitymapbox(밀도 히트맵 트레이스) 탑재
-                fig_anim.add_trace(go.Densitymapbox(
-                    lon=init_data['x'],
-                    lat=init_data['y'],
-                    z=init_data['num_people'],
-                    radius=visual_radius,
-                    colorscale='Jet',  # 파->녹->황->적으로 이어지는 화려한 열화상 테마
-                    zmin=0,
-                    zmax=max_people_val,
-                    showscale=True,
-                    colorbar=dict(title="혼잡도 가중치", thickness=15, len=0.8)
-                ))
-
-                # 3. 고속 자바스크립트 프레임 빌드
-                frames = []
-                for t in unique_times:
-                    t_data = anim_base[anim_base['시간'] == t]
-                    frames.append(go.Frame(
-                        data=[go.Densitymapbox(
-                            lon=t_data['x'],
-                            lat=t_data['y'],
-                            z=t_data['num_people'],
-                            radius=visual_radius
-                        )],
-                        name=t
-                    ))
-                fig_anim.frames = frames
-
-                # 4. 🕹️ 자율 플레이어 제어 및 다크 테마 레이아웃 설정
-                fig_anim.update_layout(
-                    template="plotly_dark",
-                    height=680,  # 발표용 대형 규격
-                    margin=dict(l=10, r=10, b=10, t=40),
-                    
-                    # ⭕ [기능 추가] 발표 중 마우스 클릭 실수로 지도가 움직이지 않도록 고정
-                    dragmode=False, 
-                    
-                    # 공항 도면 백그라운드 레이어 고정
-                    mapbox=dict(
-                        style="white-bg", 
-                        layers=[{
-                            "sourcetype": "image",
-                            "source": img,
-                            "coordinates": [
-                                [0, img_height],       
-                                [img_width, img_height], 
-                                [img_width, 0],        
-                                [0, 0]                 
-                            ]
-                        }],
-                        center=dict(lon=img_width / 2, lat=img_height / 2),
-                        zoom=9.5 if img_width > img_height else 10.0
-                    ),
-                    
-                    # 애니메이션 제어 버튼 (Play / Pause)
-                    updatemenus=[{
-                        "type": "buttons",
-                        "buttons": [
-                            {
-                                "label": "▶️ Play (자동 애니메이션)",
-                                "method": "animate",
-                                "args": [None, {
-                                    "frame": {"duration": 40, "redraw": True}, 
-                                    "fromcurrent": True, 
-                                    "transition": {"duration": 15, "easing": "cubic-in-out"} 
-                                }]
-                            },
-                            {
-                                "label": "⏸️ Pause",
-                                "method": "animate",
-                                "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
-                            }
-                        ],
-                        "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
-                        "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
-                    }],
-                    
-                    # 하단 시간 흐름 슬라이더
-                    sliders=[{
-                        "active": 0,
-                        "yanchor": "top", "xanchor": "left",
-                        "currentvalue": {
-                            "font": {"size": 16, "color": "#FF4B4B"}, 
-                            "prefix": "⏱️ 실시간 공항 관제 타임라인: ", 
-                            "visible": True
-                        },
-                        "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
-                        "steps": [{
-                            "args": [[f.name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
-                            "label": f.name, "method": "animate"
-                        } for f in frames]
-                    }]
-                )
-
-                # 최종 결과물 화면 출력
-                st.plotly_chart(fig_anim, use_container_width=True)
-            
+        if anim_base.empty:
+            st.warning("관제 데이터가 존재하지 않습니다.")
         else:
-            st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
+            first_time = unique_times[0]
+            init_data = anim_base[anim_base['시간'] == first_time]
+            max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
+
+            fig_anim = go.Figure()
+
+            # 공항 배경 이미지 레이아웃 탑재
+            fig_anim.add_layout_image(dict(
+                source=img, xref="x", yref="y", x=0, y=0, 
+                sizex=img_width, sizey=img_height, 
+                sizing="stretch", opacity=0.6, layer="below"
+            ))
+
+            # 기본 혼잡도 트레이스 (Jet 테마로 화려한 불꽃 시각화)
+            fig_anim.add_trace(go.Scatter(
+                x=init_data['x'], y=init_data['y'], mode='markers+text',
+                marker=dict(
+                    size=init_data['num_people'], 
+                    sizemode='area', 
+                    sizeref=2. * max_people_val / (45**2),
+                    color=init_data['num_people'], 
+                    colorscale='Jet',  # 발표장에서 가장 화려하고 직관적인 컬러풀 테마
+                    showscale=True,
+                    cmin=0, cmax=max_people_val,
+                    colorbar=dict(title="혼잡 인원 (명)", thickness=15)
+                ),
+                text=init_data['area'], 
+                textfont=dict(size=11, color="white"), 
+                textposition="top center"
+            ))
+
+            # 2. 🌟 [핵심 수정] 프레임 빌드 시 Scatter 스타일 속성 유지
+            frames = []
+            for t in unique_times:
+                t_data = anim_base[anim_base['시간'] == t]
+                frames.append(go.Frame(
+                    data=[go.Scatter(
+                        x=t_data['x'], 
+                        y=t_data['y'], 
+                        mode='markers+text',  # 프레임 전환 시에도 마커와 텍스트 형태 강제 유지
+                        marker=dict(
+                            size=t_data['num_people'],
+                            sizemode='area',
+                            sizeref=2. * max_people_val / (45**2),
+                            color=t_data['num_people'],
+                            colorscale='Jet',
+                            cmin=0, cmax=max_people_val
+                        ),
+                        text=t_data['area'],
+                        textfont=dict(size=11, color="white"),
+                        textposition="top center"
+                    )],
+                    name=t
+                ))
+            fig_anim.frames = frames
+
+            # 3. 🕹️ 재생 컨트롤러 및 타임라인 설정
+            fig_anim.update_layout(
+                template="plotly_dark",
+                height=650,  # 발표용 대화면 사이즈
+                margin=dict(l=10, r=10, b=10, t=40),
+                updatemenus=[{
+                    "type": "buttons",
+                    "buttons": [
+                        {
+                            "label": "▶️ Play (자동 관제)",
+                            "method": "animate",
+                            "args": [None, {
+                                "frame": {"duration": 100, "redraw": True}, # 🌟 축 스케일링 붕괴 방지를 위해 redraw=True 설정
+                                "fromcurrent": True, 
+                                "transition": {"duration": 50, "easing": "quadratic-in-out"}
+                            }]
+                        },
+                        {
+                            "label": "⏸️ Pause",
+                            "method": "animate",
+                            "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
+                        }
+                    ],
+                    "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
+                    "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
+                }],
+                sliders=[{
+                    "active": 0,
+                    "yanchor": "top", "xanchor": "left",
+                    "currentvalue": {
+                        "font": {"size": 16, "color": "#FF4B4B"}, 
+                        "prefix": "⏱️ 관제 시점: ", 
+                        "visible": True
+                    },
+                    "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
+                    "steps": [{
+                        "args": [[f.name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
+                        "label": f.name, "method": "animate"
+                    } for f in frames]
+                }]
+            )
+
+            # 4. 🌟 [핵심 수정] 좌표축 범위 강제 고정 (오토스케일링 차단)
+            fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
+            fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True) # Y축 반전 상태 고정
+
+            # 최종 가속 차트 출력
+            st.plotly_chart(fig_anim, use_container_width=True)
+        
+    else:
+        st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
