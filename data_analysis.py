@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (초경량 커스텀 가우시안 안개 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (리얼 가우시안 이미지 번짐 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (은은한 핫스팟 애니메이션)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파 밀도가 렉 없이 부드럽게 흐르며 안개처럼 번집니다.")
+        st.title("📊 실시간 관제 현황 (리얼 가우시안 밀도 맵)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 구역 주변으로 안개처럼 부드럽게 번지며 자율 재생됩니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
@@ -80,122 +80,117 @@ if df is not None and coords is not None:
             if anim_base.empty:
                 st.warning("관제 데이터가 존재하지 않습니다.")
             else:
-                first_time = unique_times[0]
-                init_data = anim_base[anim_base['시간'] == first_time]
-                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
+                # 🌟 Streamlit 세션 상태로 실시간 프레임 제어 (용량 초과 원천 차단)
+                if 'anim_index' not in st.session_state:
+                    st.session_state.anim_index = 0
+                if 'is_playing' not in st.session_state:
+                    st.session_state.is_playing = False
 
+                # 재생 제어 컨트롤러 버튼
+                col1, col2, _ = st.columns([1.5, 1.5, 7])
+                with col1:
+                    if st.button("▶️ Play", use_container_width=True):
+                        st.session_state.is_playing = True
+                with col2:
+                    if st.button("⏸️ Pause", use_container_width=True):
+                        st.session_state.is_playing = False
+
+                # 타임라인 슬라이더
+                selected_time = unique_times[st.session_state.anim_index]
+                st.select_slider(
+                    "⏱️ 관제 시점",
+                    options=unique_times,
+                    value=selected_time,
+                    key="time_slider_real",
+                    disabled=st.session_state.is_playing # 재생 중에는 조작 잠금
+                )
+
+                # 2. 🌟 [리얼 히트맵 핵심] 백엔드 가우시안 2D 융합 연산
+                # 촘촘한 격자판을 만들고 사람이 있는 좌표에 값을 준 뒤, scipy로 통째로 뭉개버립니다.
+                @st.cache_data(show_spinner=False)
+                def get_real_blur_heatmap(current_time, _base_df, w, h):
+                    t_df = _base_df[_base_df['시간'] == current_time]
+                    
+                    # 해상도 격자 생성 (120x120으로 렉 없이 고화질 유지)
+                    grid_res = 120
+                    heatmap_matrix = np.zeros((grid_res, grid_res))
+                    
+                    # 공항 좌표를 격자 인덱스로 매핑
+                    for _, row in t_df.iterrows():
+                        if row['num_people'] <= 0: continue
+                        grid_x = int(row['x'] / w * (grid_res - 1))
+                        grid_y = int(row['y'] / h * (grid_res - 1))
+                        
+                        # 범위 초과 방지 안전장치
+                        grid_x = max(0, min(grid_res - 1, grid_x))
+                        grid_y = max(0, min(grid_res - 1, grid_y))
+                        
+                        heatmap_matrix[grid_y, grid_x] += row['num_people']
+                    
+                    # 🌟 SciPy 가우시안 필터로 주변 공간까지 부드럽게 번지게 만듦
+                    # sigma 숫자가 클수록 주변으로 더 넓고 은은하게 연기처럼 퍼집니다 (기본값 6~8 추천)
+                    blurred_matrix = gaussian_filter(heatmap_matrix, sigma=7.5)
+                    
+                    x_space = np.linspace(0, w, grid_res)
+                    y_space = np.linspace(0, h, grid_res)
+                    return x_space, y_space, blurred_matrix
+
+                # 현재 프레임의 완벽한 안개 데이터 추출
+                x_space, y_space, blurred_Z = get_real_blur_heatmap(selected_time, anim_base, img_width, img_height)
+
+                # 3. Plotly 차트 구성 (단 1장만 그려서 띄우므로 0.01초 만에 렌더링 끝)
                 fig_anim = go.Figure()
 
-                # 공항 배경 이미지 레이아웃 탑재
+                # 공항 도면 배경 레이어
                 fig_anim.add_layout_image(dict(
                     source=img, xref="x", yref="y", x=0, y=0, 
                     sizex=img_width, sizey=img_height, 
                     sizing="stretch", opacity=0.8, layer="below"
                 ))
 
-                # 2. 🌟 [은은함의 치트키] 커스텀 안개형 컬러 스케일 설계
-                # 0(사람 없음)일 때는 완전히 투명하고, 커질수록 노랑->주황->진한 빨강으로 스며드는 그라데이션
-                custom_blur_scale = [
-                    [0.0, 'rgba(255,255,255,0)'],     # 데이터가 낮으면 완전히 투명하게 뭉갬 (안개 효과)
-                    [0.3, 'rgba(254,224,144,0.4)'],   # 노스팟 은은하게 스며들기
-                    [0.6, 'rgba(253,141,60,0.6)'],    # 중간 주황빛 번짐
-                    [1.0, 'rgba(215,48,39,0.8)']       # 핫스팟 중심부 진한 레드
-                ]
-
-                # 3. 기본 트레이스 주입 (Scatter 기반이라 용량이 몇 KB 수준으로 매우 가벼움)
-                fig_anim.add_trace(go.Scatter(
-                    x=init_data['x'], y=init_data['y'], 
-                    mode='markers+text',
-                    marker=dict(
-                        size=init_data['num_people'], 
-                        sizemode='area', 
-                        sizeref=2. * max_people_val / (90**2), # 🌟 이 숫자를 키우면 안개 번짐 반경이 더 넓어집니다!
-                        color=init_data['num_people'], 
-                        colorscale=custom_blur_scale,  # 우리가 만든 은은한 그라데이션 적용
-                        cmin=0, cmax=max_people_val,
-                        line=dict(width=0),            # 딱딱한 테두리선 완벽 제거
-                        showscale=True,
-                        colorbar=dict(title="혼잡 인원 (명)", thickness=15, len=0.8)
-                    ),
-                    text=init_data['area'], 
-                    textfont=dict(size=11, color="white", family="Malgun Gothic"), 
-                    textposition="top center"
+                # 주변으로 완벽하게 스며든 리얼 히트맵 레이어
+                # 값의 흐름이 끊기지 않는 순수 커스텀 그라데이션 적용
+                fig_anim.add_trace(go.Heatmap(
+                    x=x_space,
+                    y=y_space,
+                    z=blurred_Z,
+                    colorscale=[
+                        [0.0, 'rgba(0,0,0,0)'],         # 데이터 없는 배경은 완벽 투명
+                        [0.1, 'rgba(254,224,144,0.2)'], # 은은한 외곽 노란색 번짐
+                        [0.5, 'rgba(253,141,60,0.5)'],  # 중간 주황색 융합 구역
+                        [1.0, 'rgba(215,48,39,0.75)']   # 중심 혼잡 구역 진한 레드
+                    ],
+                    zmin=0,
+                    # 스케일이 튀지 않도록 적절한 상한선 고정
+                    zmax=float(anim_base['num_people'].max()) * 0.12 if anim_base['num_people'].max() > 0 else 1.0,
+                    showscale=True,
+                    colorbar=dict(title="인파 밀도", thickness=15, len=0.8)
                 ))
 
-                # 4. 고속 애니메이션 프레임 가속 엔진 빌드 (용량이 작아 MessageSizeError 절대 없음)
-                frames = []
-                for t in unique_times:
-                    t_data = anim_base[anim_base['시간'] == t]
-                    frames.append(go.Frame(
-                        data=[go.Scatter(
-                            x=t_data['x'], 
-                            y=t_data['y'], 
-                            mode='markers+text',
-                            marker=dict(
-                                size=t_data['num_people'],
-                                sizemode='area',
-                                sizeref=2. * max_people_val / (90**2),
-                                color=t_data['num_people'],
-                                colorscale=custom_blur_scale,
-                                cmin=0, cmax=max_people_val,
-                                line=dict(width=0)
-                            ),
-                            text=t_data['area'],
-                            textfont=dict(size=11, color="white", family="Malgun Gothic"),
-                            textposition="top center"
-                        )],
-                        name=t
-                    ))
-                fig_anim.frames = frames
-
-                # 5. 🕹️ 렉 없이 부드럽게 흐르는 컨트롤러 셋업
                 fig_anim.update_layout(
                     template="plotly_dark",
-                    height=650,
-                    margin=dict(l=10, r=10, b=10, t=40),
-                    updatemenus=[{
-                        "type": "buttons",
-                        "buttons": [
-                            {
-                                "label": "▶️ Play (자동 관제)",
-                                "method": "animate",
-                                "args": [None, {
-                                    "frame": {"duration": 100, "redraw": False}, # redraw=False로 리얼타임 가속
-                                    "fromcurrent": True, 
-                                    "transition": {"duration": 50, "easing": "quadratic-in-out"}
-                                }]
-                            },
-                            {
-                                "label": "⏸️ Pause",
-                                "method": "animate",
-                                "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
-                            }
-                        ],
-                        "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
-                        "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
-                    }],
-                    sliders=[{
-                        "active": 0,
-                        "yanchor": "top", "xanchor": "left",
-                        "currentvalue": {
-                            "font": {"size": 15, "color": "#FF4B4B"}, 
-                            "prefix": "⏱️ 관제 시점: ", 
-                            "visible": True
-                        },
-                        "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
-                        "steps": [{
-                            "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
-                            "label": f.name, "method": "animate"
-                        } for f in frames]
-                    }]
+                    height=600,
+                    margin=dict(l=10, r=10, b=10, t=10),
+                    showlegend=False
                 )
 
-                # 좌표축 및 뷰포트 범위 단단히 고정
+                # 뷰포트 강제 고정
                 fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
                 fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True)
 
                 st.plotly_chart(fig_anim, use_container_width=True)
-        
+
+                # 4. 🔄 재생 스크립트 엔진 (시간이 렉 없이 째깍째깍 흐르게 만듦)
+                if st.session_state.is_playing:
+                    if st.session_state.anim_index < len(unique_times) - 1:
+                        st.session_state.anim_index += 1
+                        import time
+                        time.sleep(0.01) # 프레임 전환 속도 (쾌속 흐름)
+                        st.rerun()
+                    else:
+                        st.session_state.is_playing = False
+                        st.session_state.anim_index = 0
+                        st.rerun()
         else:
             st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
