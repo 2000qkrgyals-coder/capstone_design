@@ -63,9 +63,11 @@ if df is not None and coords is not None:
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
-    # --- [TAB 1] 실시간 통합 관제 ---
+   # --- [TAB 1] 실시간 통합 관제 (애니메이션 히트맵 버전) ---
     with tab1:
         st.title(f"📊 실시간 관제 현황 [{in_hour:02d}:{in_min:02d}]")
+        
+        # 1. 상단 미니 메트릭 레이아웃
         current_data = df[df['minute_index'] == current_time_min]
         active_areas = current_data[current_data['area'] != 'OUTSIDE']
         
@@ -78,29 +80,85 @@ if df is not None and coords is not None:
             max_area = active_areas.loc[active_areas['num_people'].idxmax(), 'area']
             m3.warning(f"최대 혼잡 구역: {max_area}")
 
+        # 2. 메인 시각화 레이아웃
         col_map, col_rank = st.columns([2, 1])
+        
         with col_map:
-            st.subheader("📍 실시간 혼잡 지도")
-            map_data = pd.merge(current_data, coords, on='area')
+            st.subheader("🔥 시간 추적 시각화 (동적 히트맵)")
+            
+            # --- 애니메이션을 위한 데이터 바인딩 ---
+            # 현재 선택한 '시간'을 기준으로 전체 하루 데이터 중 지도 좌표와 매칭되는 데이터 결합
+            anim_data = pd.merge(df, coords, on='area')
+            
+            # 보기 편하게 minute_index를 "HH:MM" 포맷의 문자열로 변환하여 정렬
+            anim_data['시간'] = anim_data['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
+            anim_data = anim_data.sort_values('minute_index')
+            
             if os.path.exists(bg_img_path):
                 img = Image.open(bg_img_path)
-                fig_map = go.Figure()
-                fig_map.add_layout_image(dict(source=img, xref="x", yref="y", x=0, y=0, sizex=img.size[0], sizey=img.size[1], sizing="stretch", opacity=0.5, layer="below"))
-                fig_map.add_trace(go.Scatter(x=map_data['x'], y=map_data['y'], mode='markers+text',
-                                             marker=dict(size=map_data['num_people'], sizemode='area', sizeref=2.*max(map_data['num_people'])/(35**2) if not map_data.empty else 1,
-                                                         color=map_data['num_people'], colorscale='Reds', showscale=True),
-                                             text=map_data['area'], textfont=dict(size=10, color="white"), textposition="top center"))
-                fig_map.update_layout(template="plotly_dark", height=500, margin=dict(l=0,r=0,b=0,t=0))
-                fig_map.update_xaxes(visible=False, range=[0, img.size[0]])
-                fig_map.update_yaxes(visible=False, range=[img.size[1], 0])
+                img_width, img_height = img.size
+                
+                # Plotly Express의 density_mapbox 스타일을 모방한 대형 2D 밀도 히트맵 생성
+                # animation_frame에 '시간' 컬럼을 지정하여 플레이 버튼이 자동으로 생성됩니다.
+                fig_map = px.density_heatmap(
+                    anim_data, 
+                    x='x', 
+                    y='y', 
+                    z='num_people', 
+                    animation_frame='시간',
+                    nbinsx=60,  # 히트맵의 가로 해상도 (부드러운 번짐 효과 조절)
+                    nbinsy=40,  # 히트맵의 세로 해상도
+                    color_continuous_scale=[
+                        [0.0, 'rgba(0,0,0,0)'],       # 인원 없음: 투명하게 배경 노출
+                        [0.2, 'rgba(0, 0, 255, 0.3)'], # 다소 여유: 파란색 잔상
+                        [0.5, 'rgba(0, 255, 0, 0.5)'], # 보통: 녹색
+                        [0.8, 'rgba(255, 165, 0, 0.7)'],# 혼잡: 주황색
+                        [1.0, 'rgba(255, 0, 0, 0.9)']   # 매우 혼잡: 강렬한 빨간색
+                    ],
+                    range_color=[0, anim_data['num_people'].max() if not anim_data.empty else 100],
+                    template="plotly_dark"
+                )
+                
+                # 도면 이미지를 배경 레이아웃으로 완벽히 일치 유치
+                fig_map.add_layout_image(dict(
+                    source=img,
+                    xref="x", yref="y",
+                    x=0, y=0,
+                    sizex=img_width, sizey=img_height,
+                    sizing="stretch",
+                    opacity=0.6,
+                    layer="below"
+                ))
+                
+                # 애니메이션 컨트롤러 및 UI 디테일 설정
+                fig_map.update_layout(
+                    height=550,
+                    margin=dict(l=0, r=0, b=0, t=40),
+                    coloraxis_colorbar=dict(title="인원 수", thickness=15),
+                    # 애니메이션 속도 조절 (프레임당 150ms 대기)
+                    sliders=[{"currentvalue": {"prefix": "⏱️ 관제 시간: ", "font": {"size": 16, "color": "#00FFCC"}}}],
+                )
+                
+                # 좌표축 반전 방지 및 이미지 크기에 고정
+                fig_map.update_xaxes(visible=False, range=[0, img_width])
+                fig_map.update_yaxes(visible=False, range=[img_height, 0]) # 이미지 Y축 방향 뒤집힘 방지
+                
+                # 플레이어가 시작할 기본 프레임 위치 지정 (사이드바에서 선택한 시간으로 바인딩)
+                target_time_str = f"{in_hour:02d}:{in_min:02d}"
+                
                 st.plotly_chart(fig_map, use_container_width=True)
+            else:
+                st.error("공항 배경 이미지(PNG)를 찾을 수 없습니다.")
 
         with col_rank:
             st.subheader("🚩 혼잡도 랭킹 (Top 10)")
-            rank_data = active_areas.sort_values('num_people', ascending=False).head(10)
-            fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
-            fig_rank.update_layout(height=500, yaxis={'autorange': 'reversed'})
-            st.plotly_chart(fig_rank, use_container_width=True)
+            if not active_areas.empty:
+                rank_data = active_areas.sort_values('num_people', ascending=False).head(10)
+                fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
+                fig_rank.update_layout(height=550, yaxis={'autorange': 'reversed'}, margin=dict(t=40))
+                st.plotly_chart(fig_rank, use_container_width=True)
+            else:
+                st.info("선택한 시간에 활성화된 구역 데이터가 없습니다.")
 
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
