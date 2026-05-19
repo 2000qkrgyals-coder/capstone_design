@@ -62,16 +62,16 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (깨짐 없는 은은한 핫스팟 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (전형적인 안개형 밀도 히트맵 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (은은한 핫스팟 애니메이션)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역이 은은한 붉은빛으로 물들며 자동 재생됩니다.")
+        st.title("📊 실시간 관제 현황 (은은한 밀도 히트맵)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파 밀도가 전형적인 안개 형태로 은은하게 번지며 자율 재생됩니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
             img_width, img_height = img.size
             
-            # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
+            # 1. 데이터셋 결합 및 시간 정렬
             anim_base = pd.merge(df, coords, on='area')
             anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
             anim_base = anim_base.sort_values('minute_index')
@@ -82,8 +82,7 @@ if df is not None and coords is not None:
             else:
                 first_time = unique_times[0]
                 init_data = anim_base[anim_base['시간'] == first_time]
-                max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
-
+                
                 fig_anim = go.Figure()
 
                 # 공항 배경 이미지 레이아웃 탑재
@@ -93,56 +92,45 @@ if df is not None and coords is not None:
                     sizing="stretch", opacity=0.75, layer="below"
                 ))
 
-                # 2. 🌟 [은은함의 진짜 비결] 외곽선 없는 소프트 마커 믹싱
-                # 딱딱한 테두리를 아예 지우고, 불투명도를 낮춰 인파가 겹칠 때 자연스럽게 융합되도록 합니다.
-                fig_anim.add_trace(go.Scatter(
-                    x=init_data['x'], y=init_data['y'], 
-                    mode='markers+text',
-                    marker=dict(
-                        size=init_data['num_people'], 
-                        sizemode='area', 
-                        sizeref=2. * max_people_val / (65**2), # 마커가 너무 쨍하지 않고 부드럽게 커지도록 조절
-                        color=init_data['num_people'], 
-                        colorscale='YlOrRd',  # 노랑 -> 주황 -> 빨강으로 은은하게 이어지는 고급스러운 웜톤 테마
-                        cmin=0, cmax=max_people_val,
-                        opacity=0.6,          # ◀ 60% 투명도로 안개처럼 은은하게 겹치는 효과
-                        line=dict(width=0),   # ◀ 테두리 두께를 0으로 만들어 인위적인 경계면 완전 제거
-                        showscale=True,
-                        colorbar=dict(title="혼잡 인원 (명)", thickness=15, len=0.8)
+                # 2. 🌟 [전형적인 히트맵 구현] Histogram2dContour + 가우시안 블러링
+                # x, y 좌표에 가중치(z)를 주어 경계선 없이 은은하게 퍼지는 밀도장을 형성합니다.
+                fig_anim.add_trace(go.Histogram2dContour(
+                    x=init_data['x'],
+                    y=init_data['y'],
+                    z=init_data['num_people'],
+                    histfunc="sum",
+                    name="혼잡 밀도",
+                    colorscale="YlOrRd",      # 전형적인 핫스팟 컬러 (노랑-주황-빨강)
+                    ncontours=30,             # 등고선 단계를 촘촘하게 쪼개서 부드럽게 연결
+                    contours=dict(
+                        coloring="heatmap",   # 면 전체를 채우는 히트맵 모드
+                        showlines=False       # 경계선(테두리)을 완전히 지워 안개처럼 연출
                     ),
-                    text=init_data['area'], 
-                    textfont=dict(size=11, color="white", family="Malgun Gothic"), 
-                    textposition="top center"
+                    line=dict(smoothing=1.0), # 곡선을 최대로 부드럽게 처리
+                    opacity=0.65,             # 도면이 비쳐 보이도록 투명도 설정
+                    showscale=True,
+                    colorbar=dict(title="인파 밀도 지수", thickness=15, len=0.8)
                 ))
 
-                # 3. 고속 자바스크립트 가속 프레임 빌드 (소프트 마커 속성 유지)
+                # 3. 애니메이션 프레임 가속 엔진 구축
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
                     frames.append(go.Frame(
-                        data=[go.Scatter(
-                            x=t_data['x'], 
-                            y=t_data['y'], 
-                            mode='markers+text',
-                            marker=dict(
-                                size=t_data['num_people'],
-                                sizemode='area',
-                                sizeref=2. * max_people_val / (65**2),
-                                color=t_data['num_people'],
-                                colorscale='YlOrRd',
-                                cmin=0, cmax=max_people_val,
-                                opacity=0.6,
-                                line=dict(width=0)
-                            ),
-                            text=t_data['area'],
-                            textfont=dict(size=11, color="white", family="Malgun Gothic"),
-                            textposition="top center"
+                        data=[go.Histogram2dContour(
+                            x=t_data['x'],
+                            y=t_data['y'],
+                            z=t_data['num_people'],
+                            histfunc="sum",
+                            ncontours=30,
+                            contours=dict(coloring="heatmap", showlines=False),
+                            line=dict(smoothing=1.0)
                         )],
                         name=t
                     ))
                 fig_anim.frames = frames
 
-                # 4. 🕹️ 재생 컨트롤러 및 타임라인 설정
+                # 4. 🕹️ 슬라이더 및 재생/일시정지 제어
                 fig_anim.update_layout(
                     template="plotly_dark",
                     height=650,
@@ -154,9 +142,9 @@ if df is not None and coords is not None:
                                 "label": "▶️ Play (자동 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 100, "redraw": True}, 
+                                    "frame": {"duration": 120, "redraw": True}, 
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 60, "easing": "cubic-in-out"} # 스무스한 쿠빅 가속
+                                    "transition": {"duration": 80, "easing": "linear"}
                                 }]
                             },
                             {
@@ -184,7 +172,7 @@ if df is not None and coords is not None:
                     }]
                 )
 
-                # 좌표축 범위 고정 및 뷰포트 강제 고정
+                # 이미지 뷰포트 고정
                 fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
                 fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True)
 
