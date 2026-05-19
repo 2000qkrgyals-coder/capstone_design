@@ -62,92 +62,76 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (시간 동기화 + 최적 해상도 히트맵) ---
+# --- [TAB 1] 실시간 통합 관제 (Plotly 순수 애니메이션 엔진 버전) ---
     with tab1:
-        st.title(f"📊 실시간 관제 현황 [{in_hour:02d}:{in_min:02d}]")
+        st.title("📊 실시간 관제 현황 (애니메이션 모드)")
         
-        # 1. 공통 데이터 및 시간 배열 준비
+        # 1. 애니메이션용 전체 데이터셋 빌드
         anim_data = pd.merge(df, coords, on='area')
         anim_data['시간'] = anim_data['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
+        anim_data = anim_data.sort_values('minute_index')
         unique_times = sorted(anim_data['시간'].unique())
-
-        # 초기 시간 세션 상태 설정
-        target_time_str = f"{in_hour:02d}:{in_min:02d}"
-        if "current_time_str" not in st.session_state or st.session_state.current_time_str not in unique_times:
-            st.session_state.current_time_str = target_time_str if target_time_str in unique_times else unique_times[0]
-        if "playing" not in st.session_state:
-            st.session_state.playing = False
-
-        # 2. 재생/정지 제어 및 슬라이더 동기화 레이아웃
-        st.write("---")
-        ctrl_c1, ctrl_c2 = st.columns([1, 5])
         
-        with ctrl_c1:
-            def toggle_play():
-                st.session_state.playing = not st.session_state.playing
-
-            btn_label = "⏸️ 일시정지" if st.session_state.playing else "▶️ 자동 재생"
-            st.button(btn_label, on_click=toggle_play, use_container_width=True)
-
-        with ctrl_c2:
-            # 💡 핵심: 세션 상태를 value가 아닌 인덱스로 추적하여 렌더링 꼬임 방지
-            try:
-                curr_slider_idx = unique_times.index(st.session_state.current_time_str)
-            except ValueError:
-                curr_slider_idx = 0
-
-            selected_time_str = st.select_slider(
-                "⏱️ 관제 타임라인 조절 (마우스 드래그 가능)",
-                options=unique_times,
-                value=unique_times[curr_slider_idx],
-                key="timeline_slider_fixed"
-            )
-            # 사용자가 슬라이더를 손으로 건드렸을 때만 세션 업데이트
-            if not st.session_state.playing:
-                st.session_state.current_time_str = selected_time_str
-
-        # 3. 메인 시각화 레이아웃 (지도 & 랭킹)
         col_map, col_rank = st.columns([2, 1])
         
         with col_map:
-            st.subheader(f"🔥 공간 밀도 지도 ({st.session_state.current_time_str})")
+            st.subheader("🔥 공간 밀도 지도 (전체 타임라인)")
             
             if os.path.exists(bg_img_path):
                 img = Image.open(bg_img_path)
                 img_width, img_height = img.size
                 
-                # 현재 선택된 시간의 데이터만 추출
-                t_data = anim_data[anim_data['시간'] == st.session_state.current_time_str]
-                
-                # 가상 그리드 세팅 (연산 속도를 위해 해상도 최적화)
-                grid_x = np.linspace(0, img_width, 50)
-                grid_y = np.linspace(0, img_height, 35)
+                # 가상 그리드 생성 (등고선용 데이터 매트릭스 최적화)
+                grid_x = np.linspace(0, img_width, 40)
+                grid_y = np.linspace(0, img_height, 25)
                 X, Y = np.meshgrid(grid_x, grid_y)
                 
-                Z = np.zeros_like(X)
-                for _, row in t_data.iterrows():
-                    if row['num_people'] > 0:
-                        # 💡 [조정 완료] 기존 0.12에서 0.04로 축소하여 딱 구역 주변만 이쁘게 번지도록 수정
-                        sigma = max(img_width, img_height) * 0.04  
-                        dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
-                        Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
+                # 💡 핵심: 에러를 방지하기 위해 px.density_heatmap 구조를 커스텀하여 애니메이션 구성
+                # 각 분(Minute)마다 미리 연산된 데이터를 프레임으로 바인딩
+                frames = []
+                for t in unique_times:
+                    t_data = anim_data[anim_data['시간'] == t]
+                    Z = np.zeros_like(X)
+                    for _, row in t_data.iterrows():
+                        if row['num_people'] > 0:
+                            sigma = max(img_width, img_height) * 0.04
+                            dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
+                            Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
+                    
+                    frames.append(go.Frame(
+                        data=[go.Contour(x=grid_x, y=grid_y, z=Z, showscale=False)],
+                        name=t
+                    ))
                 
-                # 밀도 히트맵 생성
-                fig_map = go.Figure(data=go.Contour(
-                    x=grid_x, y=grid_y, z=Z,
-                    colorscale=[
-                        [0.0, 'rgba(0,0,0,0)'],           # 인원 없음: 투명
-                        [0.2, 'rgba(0, 120, 255, 0.25)'], # 약간 여유: 옅은 파랑
-                        [0.5, 'rgba(0, 240, 100, 0.45)'], # 보통: 초록
-                        [0.8, 'rgba(255, 140, 0, 0.65)'], # 혼잡: 주황
-                        [1.0, 'rgba(240, 0, 0, 0.85)']    # 매우 혼잡: 진한 빨강
-                    ],
-                    contours=dict(coloring='heatmap', showlines=False),
-                    line_width=0,
-                    opacity=0.65,
-                    showscale=True,
-                    colorbar=dict(title="혼잡 지수", thickness=15)
-                ))
+                # 초기 첫 프레임 데이터 세팅
+                initial_t = f"{in_hour:02d}:{in_min:02d}"
+                if initial_t not in unique_times: initial_t = unique_times[0]
+                
+                t_data_init = anim_data[anim_data['시간'] == initial_t]
+                Z_init = np.zeros_like(X)
+                for _, row in t_data_init.iterrows():
+                    if row['num_people'] > 0:
+                        sigma = max(img_width, img_height) * 0.04
+                        dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
+                        Z_init += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
+
+                # 기본 맵 틀 생성
+                fig_map = go.Figure(
+                    data=[go.Contour(
+                        x=grid_x, y=grid_y, z=Z_init,
+                        colorscale=[
+                            [0.0, 'rgba(0,0,0,0)'],
+                            [0.2, 'rgba(0, 120, 255, 0.25)'],
+                            [0.5, 'rgba(0, 240, 100, 0.45)'],
+                            [0.8, 'rgba(255, 140, 0, 0.65)'],
+                            [1.0, 'rgba(240, 0, 0, 0.85)']
+                        ],
+                        contours=dict(coloring='heatmap', showlines=False),
+                        line_width=0, opacity=0.65,
+                        colorbar=dict(title="혼잡 지수", thickness=15)
+                    )],
+                    frames=frames
+                )
                 
                 # 도면 레이아웃 설정
                 fig_map.add_layout_image(dict(
@@ -156,52 +140,39 @@ if df is not None and coords is not None:
                     sizing="stretch", opacity=0.6, layer="below"
                 ))
                 
+                # 💡 안전 규격으로 재설계한 내장 컨트롤러 (깜빡임 없음)
                 fig_map.update_layout(
-                    height=520, template="plotly_dark",
-                    margin=dict(l=5, r=5, b=5, t=5)
+                    height=550, template="plotly_dark",
+                    margin=dict(l=10, r=10, b=50, t=10),
+                    updatemenus=[dict(
+                        type="buttons", direction="left", x=0.01, y=-0.05, xanchor="left", yanchor="top",
+                        buttons=[
+                            dict(label="▶️ 재생", method="animate", args=[None, dict(frame=dict(duration=80, redraw=False), fromcurrent=True, mode="immediate")]),
+                            dict(label="⏸️ 정지", method="animate", args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate")])
+                        ]
+                    )],
+                    sliders=[dict(
+                        steps=[dict(label=t, method="animate", args=[[t], dict(frame=dict(duration=0, redraw=False), mode="immediate")]) for t in unique_times],
+                        active=unique_times.index(initial_t),
+                        x=0.15, y=-0.05, xanchor="left", yanchor="top"
+                    )]
                 )
                 fig_map.update_xaxes(visible=False, range=[0, img_width])
                 fig_map.update_yaxes(visible=False, range=[img_height, 0])
                 
+                # 💡 use_container_width 구조 유지하며 완벽 렌더링
                 st.plotly_chart(fig_map, use_container_width=True)
             else:
                 st.error("공항 배경 이미지(PNG)를 찾을 수 없습니다.")
 
         with col_rank:
-            st.subheader("🚩 혼잡도 랭킹 (Top 10)")
-            # 랭킹 데이터 역시 선택된 시간과 실시간 맵핑
-            rank_idx = unique_times.index(st.session_state.current_time_str)
-            rank_current_data = df[df['minute_index'] == rank_idx]
-            rank_active_areas = rank_current_data[rank_current_data['area'] != 'OUTSIDE']
-            
-            if not rank_active_areas.empty:
-                rank_data = rank_active_areas.sort_values('num_people', ascending=False).head(10)
+            st.subheader("🚩 기준 시간 혼잡도 랭킹")
+            # 전체 화면 리프레시를 안 하므로, 사이드바에서 고정한 시간 기준의 랭킹을 보여줍니다.
+            rank_data = anim_data[anim_data['시간'] == initial_t].sort_values('num_people', ascending=False).head(10)
+            if not rank_data.empty:
                 fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
-                fig_rank.update_layout(height=520, yaxis={'autorange': 'reversed'}, margin=dict(t=5, b=5))
+                fig_rank.update_layout(height=550, yaxis={'autorange': 'reversed'}, margin=dict(t=10, b=10))
                 st.plotly_chart(fig_rank, use_container_width=True)
-            else:
-                st.info("현재 시간에 활성화된 구역 데이터가 없습니다.")
-
-        # 4. [상단 지표 실시간 동기화]
-        # 메트릭스 바가 위에 있으면 시간 흐름을 한눈에 보기 편하도록 배치 조정
-        st.write("---")
-        m1, m2, m3 = st.columns(3)
-        curr_total = total_flow.get(unique_times.index(st.session_state.current_time_str), 0)
-        m1.metric("터미널 전체 인원", f"{curr_total:.1f} 명")
-        if not rank_active_areas.empty:
-            std_val = rank_active_areas['num_people'].std()
-            m2.metric("구역별 혼잡 불균형", f"{std_val:.2f}")
-            max_area = rank_active_areas.loc[rank_active_areas['num_people'].idxmax(), 'area']
-            m3.warning(f"최대 혼잡 구역: {max_area}")
-
-        # 5. 자동 재생 강제 트리거 구문
-        if st.session_state.playing:
-            import time
-            time.sleep(0.1) # 애니메이션 재생 속도 조절 (너무 빠르면 0.2~0.3으로 늘리세요)
-            curr_idx = unique_times.index(st.session_state.current_time_str)
-            next_idx = (curr_idx + 1) % len(unique_times)
-            st.session_state.current_time_str = unique_times[next_idx]
-            st.rerun()
 
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
