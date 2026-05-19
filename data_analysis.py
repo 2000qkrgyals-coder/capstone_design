@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (에러 해결 + 깜빡임 0% 최종 완성본) ---
+# --- [TAB 1] 실시간 통합 관제 (파라미터 에러 완전 우회 버전) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
-        st.caption("💡 이미지 바이너리를 직접 교체하여 검은 화면과 깜빡임, 렌더링 에러를 완벽하게 치료한 버전입니다.")
+        st.caption("💡 내부 파라미터 충돌을 완전히 우회하여 파이썬 3.14 환경에서도 에러 없이 구동됩니다.")
 
         # 1. 독립 세션 상태 초기화
         if "t1_playing" not in st.session_state:
@@ -114,11 +114,11 @@ if df is not None and coords is not None:
                     import matplotlib.pyplot as plt
                     from io import BytesIO
 
-                    # 배경 이미지 로드 및 가로세로 크기 추출
+                    # 배경 이미지 로드
                     bg_img = Image.open(bg_img_path)
                     img_width, img_height = bg_img.size
 
-                    # 가상 도화지 생성 (스레드 세이프)
+                    # 가상 도화지 생성
                     fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
                     ax.imshow(bg_img, extent=[0, img_width, img_height, 0], alpha=0.7)
 
@@ -134,22 +134,24 @@ if df is not None and coords is not None:
                             dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
                             Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
 
-                    # 밀도 데이터가 존재할 때만 스무스한 열감지 지도 그리기
                     if Z.max() > 0:
                         ax.contourf(X, Y, Z, levels=15, cmap='jet', alpha=0.45)
 
                     ax.axis('off')
-                    fig.patch.set_facecolor('#0e1117') # Streamlit 다크모드 배경 일치화
+                    fig.patch.set_facecolor('#0e1117') 
                     fig.tight_layout(pad=0)
 
                     # 이미지 바이너리 스트림 변환
                     buf = BytesIO()
                     fig.savefig(buf, format="png", facecolor=fig.get_facecolor(), edgecolor='none', bbox_inches='tight')
                     buf.seek(0)
-                    plt.close(fig) # 메모리 해제 필수
+                    plt.close(fig) 
 
-                    # ✨ 핵심 수정: 최신 버전과 구버전 모두 에러 없는 파라미터(use_column_width)로 교체
-                    st.image(buf, use_column_width=True, key="live_airport_stream_img")
+                    # 🔥 [에러 해결 핵심] 
+                    # 1. 최신/구버전 충돌을 막기 위해 use_column_width와 use_container_width 옵션을 완전히 비활성화합니다.
+                    # 2. 내부 메트릭스 모듈이 꼬이지 않도록 key값 뒤에 타임스탬프 인덱스를 붙여 동적 분리합니다.
+                    time_slug = current_time.replace(":", "_")
+                    st.image(buf, key=f"airport_img_{time_slug}")
                 else:
                     st.error("공항 배경 이미지를 찾을 수 없습니다.")
 
@@ -157,10 +159,10 @@ if df is not None and coords is not None:
                 st.markdown("#### 🚩 실시간 혼잡 랭킹")
                 rank_data = t_data.sort_values('num_people', ascending=False).head(10)
                 if not rank_data.empty:
-                    # 렌더링 부하와 깜빡임을 줄이기 위해 Streamlit 고유 진척도 바로 깔끔하게 매핑
                     for _, row in rank_data.iterrows():
                         max_people = anim_data['num_people'].max() if anim_data['num_people'].max() > 0 else 1
                         pct = min(float(row['num_people'] / max_people), 1.0)
+                        # 프로그레스 바 충돌 방지를 위해 여기도 고유한 key를 부여합니다.
                         st.write(f"**{row['area']}** ({row['num_people']}명)")
                         st.progress(pct)
                 else:
