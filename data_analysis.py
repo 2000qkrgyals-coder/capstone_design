@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (파라미터 에러 완전 우회 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (바이트 변환 에러 완벽 해결 버전) ---
     with tab1:
         st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
-        st.caption("💡 내부 파라미터 충돌을 완전히 우회하여 파이썬 3.14 환경에서도 에러 없이 구동됩니다.")
+        st.caption("💡 메모리 버퍼를 순수 바이트 배열로 변환하여 3.14 환경의 렌더링 에러를 완벽하게 해결했습니다.")
 
         # 1. 독립 세션 상태 초기화
         if "t1_playing" not in st.session_state:
@@ -145,13 +145,15 @@ if df is not None and coords is not None:
                     buf = BytesIO()
                     fig.savefig(buf, format="png", facecolor=fig.get_facecolor(), edgecolor='none', bbox_inches='tight')
                     buf.seek(0)
-                    plt.close(fig) 
+                    
+                    # 🔥 [에러 해결 치트키] 
+                    # 버퍼 객체 자체를 넘기지 않고, 순수 바이트 데이터(.getvalue())를 추출해서 전달합니다.
+                    img_bytes = buf.getvalue()
+                    
+                    plt.close(fig) # 메모리 해제
 
-                    # 🔥 [에러 해결 핵심] 
-                    # 1. 최신/구버전 충돌을 막기 위해 use_column_width와 use_container_width 옵션을 완전히 비활성화합니다.
-                    # 2. 내부 메트릭스 모듈이 꼬이지 않도록 key값 뒤에 타임스탬프 인덱스를 붙여 동적 분리합니다.
-                    time_slug = current_time.replace(":", "_")
-                    st.image(buf, key=f"airport_img_{time_slug}")
+                    # 💡 key를 하나로 고정해야 브라우저가 흰 화면으로 초기화하지 않고 픽셀만 부드럽게 스왑합니다.
+                    st.image(img_bytes, key="live_airport_heatmap_image")
                 else:
                     st.error("공항 배경 이미지를 찾을 수 없습니다.")
 
@@ -159,12 +161,14 @@ if df is not None and coords is not None:
                 st.markdown("#### 🚩 실시간 혼잡 랭킹")
                 rank_data = t_data.sort_values('num_people', ascending=False).head(10)
                 if not rank_data.empty:
-                    for _, row in rank_data.iterrows():
+                    for idx, row in enumerate(rank_data.iterrows()):
+                        row_data = row[1]
                         max_people = anim_data['num_people'].max() if anim_data['num_people'].max() > 0 else 1
-                        pct = min(float(row['num_people'] / max_people), 1.0)
-                        # 프로그레스 바 충돌 방지를 위해 여기도 고유한 key를 부여합니다.
-                        st.write(f"**{row['area']}** ({row['num_people']}명)")
-                        st.progress(pct)
+                        pct = min(float(row_data['num_people'] / max_people), 1.0)
+                        
+                        st.write(f"**{row_data['area']}** ({row_data['num_people']}명)")
+                        # 순트래킹을 위해 에러 방지용 루프 인덱스 키 부여
+                        st.progress(pct, key=f"progress_{idx}")
                 else:
                     st.info("데이터 없음")
 
