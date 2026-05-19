@@ -63,15 +63,16 @@ if df is not None and coords is not None:
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
 
-  # --- [TAB 1] 실시간 통합 관제 (Plotly 속성 에러 완벽 해결 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (발표용 극강의 리얼 밀도 번짐 히트맵 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (고속 애니메이션 모드)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 전체 시간대의 혼잡도 변화가 비디오처럼 깜빡임 없이 자동 재생됩니다.")
+        st.title("📊 실시간 관제 현황 (Real Density Dynamic Heatmap)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역이 열화상 화면처럼 실시간으로 번지고 융합되며 흐릅니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
+            img_width, img_height = img.size
             
-            # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
+            # 1. 데이터셋 결합 및 시간 정렬
             anim_base = pd.merge(df, coords, on='area')
             anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
             anim_base = anim_base.sort_values('minute_index')
@@ -84,66 +85,76 @@ if df is not None and coords is not None:
                 init_data = anim_base[anim_base['시간'] == first_time]
                 max_people_val = float(anim_base['num_people'].max()) if anim_base['num_people'].max() > 0 else 1.0
 
+                # 🔥 발표 최고 명장면을 위한 가중치 튜닝
+                # 밀도 히트맵 특성상 데이터 1개당 반경이 너무 작으면 안 예쁘므로, 번짐 반경(Radius)을 화면 크기에 맞게 세팅합니다.
+                visual_radius = int(max(img_width, img_height) * 0.035) 
+
                 fig_anim = go.Figure()
 
-                # 공항 배경 이미지 레이아웃 탑재
-                fig_anim.add_layout_image(dict(
-                    source=img, xref="x", yref="y", x=0, y=0, 
-                    sizex=img.size[0], sizey=img.size[1], 
-                    sizing="stretch", opacity=0.6, layer="below"
+                # 2. 🚀 [간지의 핵심] 단순 마커가 아닌 Densitymapbox(밀도 히트맵 트레이스) 탑재
+                fig_anim.add_trace(go.Densitymapbox(
+                    lon=init_data['x'],
+                    lat=init_data['y'],
+                    z=init_data['num_people'],
+                    radius=visual_radius,
+                    colorscale='Jet',  # 가장 직관적이고 화려한 온도 변화 테마 (파->녹->황->적)
+                    zmin=0,
+                    zmax=max_people_val,
+                    showscale=True,
+                    colorbar=dict(title="혼잡도 가중치", thickness=15, len=0.8)
                 ))
 
-                # 기본 혼잡도 트레이스 (Jet 테마로 화려한 불꽃 시각화)
-                fig_anim.add_trace(go.Scatter(
-                    x=init_data['x'], y=init_data['y'], mode='markers+text',
-                    marker=dict(
-                        size=init_data['num_people'], 
-                        sizemode='area', 
-                        sizeref=2. * max_people_val / (45**2),
-                        color=init_data['num_people'], 
-                        colorscale='Jet',  # 발표장에서 가장 화려하고 직관적인 컬러풀 테마
-                        showscale=True,
-                        cmin=0, cmax=max_people_val,
-                        colorbar=dict(title="혼잡 인원 (명)", thickness=15)
-                    ),
-                    text=init_data['area'], 
-                    textfont=dict(size=11, color="white"), 
-                    textposition="top center"
-                ))
-
-                # 2. 고속 자바스크립트 가속 프레임 빌드
+                # 3. 고속 자바스크립트 프레임 빌드 (번짐 레이어 전용 데이터 구조 매핑)
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
                     frames.append(go.Frame(
-                        data=[go.Scatter(
-                            x=t_data['x'], 
-                            y=t_data['y'], 
-                            marker=dict(
-                                size=t_data['num_people'],
-                                color=t_data['num_people']
-                            ),
-                            text=t_data['area']
+                        data=[go.Densitymapbox(
+                            lon=t_data['x'],
+                            lat=t_data['y'],
+                            z=t_data['num_people'],
+                            radius=visual_radius
                         )],
                         name=t
                     ))
                 fig_anim.frames = frames
 
-                # 3. 🕹️ 재생 컨트롤러 및 타임라인 설정
+                # 4. 🕹️ 자율 플레이어 제어 및 다크 테마 레이아웃 설정
                 fig_anim.update_layout(
                     template="plotly_dark",
-                    height=650,  # 발표용 대화면 사이즈
+                    height=680,  # 프레젠테이션 최적화 대형 규격
                     margin=dict(l=10, r=10, b=10, t=40),
+                    
+                    # 📍 공항 이미지를 바탕에 깔고 좌표계를 매칭시키는 맵박스 커스텀 레이아웃
+                    mapbox=dict(
+                        style="white-bg",  # 기본 맵 타일을 지우고 오직 우리 공항 도면만 노출
+                        layers=[{
+                            "sourcetype": "image",
+                            "source": img,
+                            # 도면의 사각 모서리 좌표를 맵박스 가상 위경도축(0~100)에 고정
+                            "coordinates": [
+                                [0, img_height],       # 좌상단
+                                [img_width, img_height], # 우상단
+                                [img_width, 0],        # 우하단
+                                [0, 0]                 # 좌하단
+                            ]
+                        }],
+                        # 화면 중앙 포커싱 및 줌 락(Lock)
+                        center=dict(lon=img_width / 2, lat=img_height / 2),
+                        zoom=9.5 if img_width > img_height else 10.0
+                    ),
+                    
+                    # 애니메이션 구동 제어판 (Play / Pause)
                     updatemenus=[{
                         "type": "buttons",
                         "buttons": [
                             {
-                                "label": "▶️ Play (자동 관제)",
+                                "label": "▶️ Play (자동 애니메이션)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 50, "redraw": False}, # 0.05초 단위 초고속 프레임 스왑
+                                    "frame": {"duration": 40, "redraw": True}, # 0.04초 단위로 시네마틱하게 고속 스왑
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 20, "easing": "quadratic-in-out"}
+                                    "transition": {"duration": 15, "easing": "cubic-in-out"} # 체액처럼 찐득하게 합쳐지는 감성 필터
                                 }]
                             },
                             {
@@ -155,28 +166,28 @@ if df is not None and coords is not None:
                         "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
                         "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
                     }],
+                    
+                    # 하단 시간 흐름 슬라이더
                     sliders=[{
                         "active": 0,
                         "yanchor": "top", "xanchor": "left",
-                        # 🔥 [에러 해결] 에러의 원인이 되던 유효하지 않은 "position" 필드를 완전히 도려내어 검증을 통과시킵니다.
                         "currentvalue": {
-                            "font": {"size": 16, "color": "#FF4B4B"}, 
-                            "prefix": "⏱️ 관제 시점: ", 
+                            "font": {"size": 16, "color": "#FF4B4B", "weight": "bold"}, 
+                            "prefix": "⏱️ 실시간 공항 관제 타임라인: ", 
                             "visible": True
                         },
                         "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
                         "steps": [{
-                            "args": [[f.name], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}],
+                            "args": [[f.name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
                             "label": f.name, "method": "animate"
                         } for f in frames]
                     }]
                 )
 
-                # 좌표축 숨기기 및 범위 잠금
-                fig_anim.update_xaxes(visible=False, range=[0, img.size[0]])
-                fig_anim.update_yaxes(visible=False, range=[img.size[1], 0])
+                # 의도하지 않은 축 이동 방지를 위해 일반 맵박스 컨트롤 비활성화
+                fig_anim.update_layout(mapbox_dragmode=False)
 
-                # 최종 가속 차트 출력
+                # 최종 결과물 화면 출력
                 st.plotly_chart(fig_anim, use_container_width=True)
             
         else:
