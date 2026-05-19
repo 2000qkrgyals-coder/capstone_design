@@ -62,16 +62,16 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (에러 없는 초경량 가우시안 히트맵 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (깨짐 없는 은은한 핫스팟 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (은은한 밀도 맵 애니메이션)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파의 흐름이 경계선 없이 연기처럼 부드럽고 은은하게 번지며 자율 재생됩니다.")
+        st.title("📊 실시간 관제 현황 (은은한 핫스팟 애니메이션)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역이 은은한 붉은빛으로 물들며 자동 재생됩니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
             img_width, img_height = img.size
             
-            # 1. 데이터셋 결합 및 시간 정렬
+            # 1. 애니메이션용 데이터셋 고속 병합 및 정렬
             anim_base = pd.merge(df, coords, on='area')
             anim_base['시간'] = anim_base['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
             anim_base = anim_base.sort_values('minute_index')
@@ -90,40 +90,59 @@ if df is not None and coords is not None:
                 fig_anim.add_layout_image(dict(
                     source=img, xref="x", yref="y", x=0, y=0, 
                     sizex=img_width, sizey=img_height, 
-                    sizing="stretch", opacity=0.7, layer="below"
+                    sizing="stretch", opacity=0.75, layer="below"
                 ))
 
-                # 2. 🌟 [은은함의 결정체] Heatmap + zsmooth='best' 기법 사용
-                # 별도의 복잡한 등고선 명세 없이 픽셀 간 단차를 완벽한 수채화처럼 부드럽게 뭉개줍니다.
-                fig_anim.add_trace(go.Heatmap(
-                    x=init_data['x'],
-                    y=init_data['y'],
-                    z=init_data['num_people'],
-                    zsmooth='best',        # ◀ 파이썬이 지원하는 가장 부드러운 안개형 가우시안 블러 필터
-                    colorscale='Reds',     # 은은하게 컴컴한 다크 모드와 어울리는 붉은 핫스팟 테마
-                    zmin=0,
-                    zmax=max_people_val,
-                    opacity=0.6,           # 배경 도면과 자연스럽게 겹치도록 투명도 최적화
-                    showscale=True,
-                    colorbar=dict(title="혼잡 밀도", thickness=15, len=0.8)
+                # 2. 🌟 [은은함의 진짜 비결] 외곽선 없는 소프트 마커 믹싱
+                # 딱딱한 테두리를 아예 지우고, 불투명도를 낮춰 인파가 겹칠 때 자연스럽게 융합되도록 합니다.
+                fig_anim.add_trace(go.Scatter(
+                    x=init_data['x'], y=init_data['y'], 
+                    mode='markers+text',
+                    marker=dict(
+                        size=init_data['num_people'], 
+                        sizemode='area', 
+                        sizeref=2. * max_people_val / (65**2), # 마커가 너무 쨍하지 않고 부드럽게 커지도록 조절
+                        color=init_data['num_people'], 
+                        colorscale='YlOrRd',  # 노랑 -> 주황 -> 빨강으로 은은하게 이어지는 고급스러운 웜톤 테마
+                        cmin=0, cmax=max_people_val,
+                        opacity=0.6,          # ◀ 60% 투명도로 안개처럼 은은하게 겹치는 효과
+                        line=dict(width=0),   # ◀ 테두리 두께를 0으로 만들어 인위적인 경계면 완전 제거
+                        showscale=True,
+                        colorbar=dict(title="혼잡 인원 (명)", thickness=15, len=0.8)
+                    ),
+                    text=init_data['area'], 
+                    textfont=dict(size=11, color="white", family="Malgun Gothic"), 
+                    textposition="top center"
                 ))
 
-                # 3. 고속 프레임 엔진 구축
+                # 3. 고속 자바스크립트 가속 프레임 빌드 (소프트 마커 속성 유지)
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
                     frames.append(go.Frame(
-                        data=[go.Heatmap(
-                            x=t_data['x'],
-                            y=t_data['y'],
-                            z=t_data['num_people'],
-                            zsmooth='best'  # 프레임 전환 시에도 은은함 유지
+                        data=[go.Scatter(
+                            x=t_data['x'], 
+                            y=t_data['y'], 
+                            mode='markers+text',
+                            marker=dict(
+                                size=t_data['num_people'],
+                                sizemode='area',
+                                sizeref=2. * max_people_val / (65**2),
+                                color=t_data['num_people'],
+                                colorscale='YlOrRd',
+                                cmin=0, cmax=max_people_val,
+                                opacity=0.6,
+                                line=dict(width=0)
+                            ),
+                            text=t_data['area'],
+                            textfont=dict(size=11, color="white", family="Malgun Gothic"),
+                            textposition="top center"
                         )],
                         name=t
                     ))
                 fig_anim.frames = frames
 
-                # 4. 🕹️ 발표 제어용 슬라이더 및 자동 재생 플레이어 주입
+                # 4. 🕹️ 재생 컨트롤러 및 타임라인 설정
                 fig_anim.update_layout(
                     template="plotly_dark",
                     height=650,
@@ -132,12 +151,12 @@ if df is not None and coords is not None:
                         "type": "buttons",
                         "buttons": [
                             {
-                                "label": "▶️ Play (자율 관제)",
+                                "label": "▶️ Play (자동 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 120, "redraw": True}, 
+                                    "frame": {"duration": 100, "redraw": True}, 
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 80, "easing": "linear"} # 물들듯이 자연스러운 스왑
+                                    "transition": {"duration": 60, "easing": "cubic-in-out"} # 스무스한 쿠빅 가속
                                 }]
                             },
                             {
@@ -154,7 +173,7 @@ if df is not None and coords is not None:
                         "yanchor": "top", "xanchor": "left",
                         "currentvalue": {
                             "font": {"size": 15, "color": "#FF4B4B"}, 
-                            "prefix": "⏱️ 분석 타임라인: ", 
+                            "prefix": "⏱️ 관제 시점: ", 
                             "visible": True
                         },
                         "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
