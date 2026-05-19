@@ -60,120 +60,68 @@ if df is not None and coords is not None:
     pivot_df = pivot_raw.rolling(window=10, min_periods=1, center=True).mean()
     total_flow = pivot_df.sum(axis=1).reindex(range(1440), fill_value=0)
 
-  # 탭 구성
+    # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (바이트 변환 에러 완벽 해결 버전) ---
+
+    # --- [TAB 1] 실시간 통합 관제 ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (고속 자율 재생 모드)")
-        st.caption("💡 메모리 버퍼를 순수 바이트 배열로 변환하여 3.14 환경의 렌더링 에러를 완벽하게 해결했습니다.")
-
-        # 1. 독립 세션 상태 초기화
-        if "t1_playing" not in st.session_state:
-            st.session_state.t1_playing = False
-        if "t1_time_idx" not in st.session_state:
-            st.session_state.t1_time_idx = 0
-
-        # 2. 기초 데이터셋 세팅
-        anim_data = pd.merge(df, coords, on='area')
-        anim_data['시간'] = anim_data['minute_index'].apply(lambda x: f"{x//60:02d}:{x%60:02d}")
-        anim_data = anim_data.sort_values('minute_index')
-        unique_times = sorted(anim_data['시간'].unique())
-        max_idx = len(unique_times) - 1
-
-        # 3. 상단 컨트롤러 (토글 버튼 및 슬라이더)
-        c1, c2 = st.columns([1, 4])
-        with c1:
-            if st.button("▶️ 재생 시작" if not st.session_state.t1_playing else "⏸️ 재생 일시정지", use_container_width=True):
-                st.session_state.t1_playing = not st.session_state.t1_playing
-                st.rerun()
-        with c2:
-            selected_idx = st.slider(
-                "⏱️ 자율 타임라인 제어", 
-                min_value=0, max_value=max_idx, 
-                value=st.session_state.t1_time_idx,
-                format=""
-            )
-            if not st.session_state.t1_playing:
-                st.session_state.t1_time_idx = selected_idx
-
-        # 4. 고속 독립 프래그먼트 엔진 정의
-        @st.fragment(run_every=0.05 if st.session_state.t1_playing else None)
-        def render_image_monitor():
-            if st.session_state.t1_playing:
-                st.session_state.t1_time_idx = (st.session_state.t1_time_idx + 1) % len(unique_times)
+        st.title(f"📊 실시간 관제 현황 [{in_hour:02d}:{in_min:02d}]")
+        
+        # 💡 [핵심 개선] 지도와 랭킹 차트 영역을 독립된 프래그먼트로 감싸서 깜빡임을 지웁니다.
+        @st.fragment
+        def render_realtime_dashboard(time_min):
+            current_data = df[df['minute_index'] == time_min]
+            active_areas = current_data[current_data['area'] != 'OUTSIDE']
             
-            current_time = unique_times[st.session_state.t1_time_idx]
-            t_data = anim_data[anim_data['시간'] == current_time]
+            # 메트릭 영역
+            m1, m2, m3 = st.columns(3)
+            curr_total = total_flow.get(time_min, 0)
+            m1.metric("터미널 전체 인원", f"{curr_total:.1f} 명")
+            if not active_areas.empty:
+                std_val = active_areas['num_people'].std()
+                m2.metric("구역별 혼잡 불균형", f"{std_val:.2f}", help="값이 높을수록 특정 구역 쏠림이 심함")
+                max_area = active_areas.loc[active_areas['num_people'].idxmax(), 'area']
+                m3.warning(f"최대 혼잡 구역: {max_area}")
 
-            st.markdown(f"#### ⏱️ 현재 실시간 관제 시점: `{current_time}`")
-            
-            v_c1, v_c2 = st.columns([2, 1])
-
-            with v_c1:
+            # 시각화 차트 레이아웃
+            col_map, col_rank = st.columns([2, 1])
+            with col_map:
+                st.subheader("📍 실시간 혼잡 지도")
+                map_data = pd.merge(current_data, coords, on='area')
                 if os.path.exists(bg_img_path):
-                    import matplotlib.pyplot as plt
-                    from io import BytesIO
+                    img = Image.open(bg_img_path)
+                    fig_map = go.Figure()
+                    fig_map.add_layout_image(dict(
+                        source=img, xref="x", yref="y", x=0, y=0, 
+                        sizex=img.size[0], sizey=img.size[1], 
+                        sizing="stretch", opacity=0.5, layer="below"
+                    ))
+                    fig_map.add_trace(go.Scatter(
+                        x=map_data['x'], y=map_data['y'], mode='markers+text',
+                        marker=dict(
+                            size=map_data['num_people'], sizemode='area', 
+                            sizeref=2.*max(map_data['num_people'])/(35**2) if not map_data.empty else 1,
+                            color=map_data['num_people'], colorscale='Reds', showscale=True
+                        ),
+                        text=map_data['area'], textfont=dict(size=10, color="white"), textposition="top center"
+                    ))
+                    fig_map.update_layout(template="plotly_dark", height=500, margin=dict(l=0,r=0,b=0,t=0))
+                    fig_map.update_xaxes(visible=False, range=[0, img.size[0]])
+                    fig_map.update_yaxes(visible=False, range=[img.size[1], 0])
+                    st.plotly_chart(fig_map, use_container_width=True)
 
-                    # 배경 이미지 로드
-                    bg_img = Image.open(bg_img_path)
-                    img_width, img_height = bg_img.size
+            with col_rank:
+                st.subheader("🚩 혼잡도 랭킹 (Top 10)")
+                rank_data = active_areas.sort_values('num_people', ascending=False).head(10)
+                fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
+                fig_rank.update_layout(height=500, yaxis={'autorange': 'reversed'})
+                st.plotly_chart(fig_rank, use_container_width=True)
 
-                    # 가상 도화지 생성
-                    fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
-                    ax.imshow(bg_img, extent=[0, img_width, img_height, 0], alpha=0.7)
+        # 프래그먼트 엔진 가동
+        render_realtime_dashboard(current_time_min)
 
-                    # 가우시안 밀도(Z) 연산
-                    grid_x = np.linspace(0, img_width, 40)
-                    grid_y = np.linspace(0, img_height, 25)
-                    X, Y = np.meshgrid(grid_x, grid_y)
-                    Z = np.zeros_like(X)
-
-                    for _, row in t_data.iterrows():
-                        if row['num_people'] > 0:
-                            sigma = max(img_width, img_height) * 0.04
-                            dist_sq = (X - row['x'])**2 + (Y - row['y'])**2
-                            Z += row['num_people'] * np.exp(-dist_sq / (2 * sigma**2))
-
-                    if Z.max() > 0:
-                        ax.contourf(X, Y, Z, levels=15, cmap='jet', alpha=0.45)
-
-                    ax.axis('off')
-                    fig.patch.set_facecolor('#0e1117') 
-                    fig.tight_layout(pad=0)
-
-                    # 이미지 바이너리 스트림 변환
-                    buf = BytesIO()
-                    fig.savefig(buf, format="png", facecolor=fig.get_facecolor(), edgecolor='none', bbox_inches='tight')
-                    buf.seek(0)
-                    
-                    # 🔥 [에러 해결 치트키] 
-                    # 버퍼 객체 자체를 넘기지 않고, 순수 바이트 데이터(.getvalue())를 추출해서 전달합니다.
-                    img_bytes = buf.getvalue()
-                    
-                    plt.close(fig) # 메모리 해제
-
-                    # 💡 key를 하나로 고정해야 브라우저가 흰 화면으로 초기화하지 않고 픽셀만 부드럽게 스왑합니다.
-                    st.image(img_bytes, key="live_airport_heatmap_image")
-                else:
-                    st.error("공항 배경 이미지를 찾을 수 없습니다.")
-
-            with v_c2:
-                st.markdown("#### 🚩 실시간 혼잡 랭킹")
-                rank_data = t_data.sort_values('num_people', ascending=False).head(10)
-                if not rank_data.empty:
-                    for idx, row in enumerate(rank_data.iterrows()):
-                        row_data = row[1]
-                        max_people = anim_data['num_people'].max() if anim_data['num_people'].max() > 0 else 1
-                        pct = min(float(row_data['num_people'] / max_people), 1.0)
-                        
-                        st.write(f"**{row_data['area']}** ({row_data['num_people']}명)")
-                        # 순트래킹을 위해 에러 방지용 루프 인덱스 키 부여
-                        st.progress(pct, key=f"progress_{idx}")
-                else:
-                    st.info("데이터 없음")
-
-        # 5. 프래그먼트 실행
-        render_image_monitor()
+    # --- [TAB 2, 3, 4] 생략 공간 ---
+    # 질문자님의 원래 나머지 탭 코드가 하단에 그대로 이어지면 됩니다.
     # --- [TAB 2] 시간대별 피크 분석 ---
     with tab2:
         st.title("🕒 주요 피크 시간대 분석")
