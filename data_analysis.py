@@ -62,9 +62,9 @@ if df is not None and coords is not None:
 
   # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (자체 고속 루프 가속 버전) ---
+# --- [TAB 1] 실시간 통합 관제 (중복 Key 에러 완전 해결 버전) ---
     with tab1:
-        st.title("📊 실시간 관제 현황")
+        st.title("📊 실시간 관제 현황 (자율 재생 모드)")
         st.caption("💡 이 탭은 사이드바의 시간 설정과 무관하게 전체 타임라인을 부드럽게 재생합니다.")
         
         # 1. 데이터 결합 및 시간 리스트 생성
@@ -96,8 +96,7 @@ if df is not None and coords is not None:
             if not st.session_state.loop_playing:
                 st.session_state.loop_time_idx = selected_idx
 
-        # 3. 화면 깜빡임을 방지하는 단일 정적 컨테이너 (st.empty)
-        # 이 컨테이너 공간 안에서만 데이터가 교체되므로 화면 전체가 출렁이지 않습니다.
+        # 3. 화면 깜빡임을 방지하는 단일 정적 컨테이너
         main_view = st.empty()
 
         if os.path.exists(bg_img_path):
@@ -108,8 +107,7 @@ if df is not None and coords is not None:
             grid_y = np.linspace(0, img_height, 25)
             X, Y = np.meshgrid(grid_x, grid_y)
 
-            # [핵심] 재생 모드 루프 제어
-            # 파이썬 레벨에서 강제로 프레임을 전환시켜 애니메이션을 작동시킵니다.
+            # [재생 모드 루프 제어]
             while st.session_state.loop_playing:
                 current_time = unique_times[st.session_state.loop_time_idx]
                 t_data = anim_data[anim_data['시간'] == current_time]
@@ -146,22 +144,21 @@ if df is not None and coords is not None:
                 fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
                 fig_rank.update_layout(height=480, yaxis={'autorange': 'reversed'}, margin=dict(l=5,r=5,b=5,t=5), coloraxis_showscale=False)
 
-                # 단일 박스 컨테이너 내부에 차트를 주입하여 레이아웃 무너짐과 깜빡임 방지
+                # 💡 해결책 1: Key 이름 뒤에 현재 시간 문자열을 결합하여 고유성을 확보합니다.
+                # 컨테이너 안에서 지워지고 새로 생성될 때 중복 에러가 안 납니다.
                 with main_view.container():
                     st.markdown(f"#### ⏱️ 현재 자율 관제 시점: `{current_time}`")
                     v_c1, v_c2 = st.columns([2, 1])
-                    # 고정 키값을 주어 캔버스를 파괴하지 않고 내부 트레이스 데이터만 갱신 유도
-                    v_c1.plotly_chart(fig_map, use_container_width=True, key="fixed_live_map")
-                    v_c2.plotly_chart(fig_rank, use_container_width=True, key="fixed_live_rank")
+                    v_c1.plotly_chart(fig_map, use_container_width=True, key=f"play_map_{current_time}")
+                    v_c2.plotly_chart(fig_rank, use_container_width=True, key=f"play_rank_{current_time}")
 
-                # 부드러운 애니메이션 프레임 속도 지연 (초 단위)
                 import time
                 time.sleep(0.05)
                 
-                # 다음 시간 인덱스로 증가 (끝까지 가면 처음 0으로 순환)
+                # 다음 시간 인덱스로 이동
                 st.session_state.loop_time_idx = (st.session_state.loop_time_idx + 1) % len(unique_times)
 
-            # --- [정지 상태] 혹은 슬라이더 수동 조작 시 화면 화면 렌더링 ---
+            # --- [정지 상태] 혹은 슬라이더 수동 조작 시 화면 렌더링 ---
             if not st.session_state.loop_playing:
                 current_time = unique_times[st.session_state.loop_time_idx]
                 t_data = anim_data[anim_data['시간'] == current_time]
@@ -187,11 +184,12 @@ if df is not None and coords is not None:
                 fig_rank = px.bar(rank_data, x='num_people', y='area', orientation='h', color='num_people', color_continuous_scale='Reds', template="plotly_dark")
                 fig_rank.update_layout(height=480, yaxis={'autorange': 'reversed'}, margin=dict(l=5,r=5,b=5,t=5), coloraxis_showscale=False)
 
+                # 💡 해결책 2: 정지 상태용 맵 키 이름도 동적으로 설정해 줍니다.
                 with main_view.container():
                     st.markdown(f"#### ⏸️ 대기 중인 시점: `{current_time}`")
                     v_c1, v_c2 = st.columns([2, 1])
-                    v_c1.plotly_chart(fig_map, use_container_width=True, key="fixed_live_map")
-                    v_c2.plotly_chart(fig_rank, use_container_width=True, key="fixed_live_rank")
+                    v_c1.plotly_chart(fig_map, use_container_width=True, key=f"stop_map_{current_time}")
+                    v_c2.plotly_chart(fig_rank, use_container_width=True, key=f"stop_rank_{current_time}")
         else:
             st.error("공항 배경 이미지(PNG)를 찾을 수 없습니다.")
 
