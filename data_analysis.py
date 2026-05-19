@@ -62,10 +62,10 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (전형적인 안개형 밀도 히트맵 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (완벽한 가우시안 안개 번짐 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (은은한 밀도 히트맵)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파 밀도가 전형적인 안개 형태로 은은하게 번지며 자율 재생됩니다.")
+        st.title("📊 실시간 관제 현황 (가우시안 인파 밀도 맵)")
+        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역을 중심으로 붉은 안개가 은은하게 피어오릅니다.")
 
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
@@ -80,57 +80,75 @@ if df is not None and coords is not None:
             if anim_base.empty:
                 st.warning("관제 데이터가 존재하지 않습니다.")
             else:
+                # 2. 🌟 [직사각형/등고선 파괴] 수학적 가우시안 안개 생성 함수
+                # Plotly 엔진 대신 파이썬이 직접 촘촘한 밀도 격자를 부드럽게 계산합니다.
+                def generate_smooth_density(time_df, width, height, num_grid=150, sigma=45):
+                    """
+                    공항 도면 크기에 맞춰 촘촘한 격자를 만들고, 
+                    각 카운터 좌표에서 인원수만큼 부드러운 안개(Gaussian)를 뿌려줍니다.
+                    """
+                    # 도면 크기에 맞춘 부드러운 x, y 격자 생성
+                    x_grid = np.linspace(0, width, num_grid)
+                    y_grid = np.linspace(0, height, num_grid)
+                    X, Y = np.meshgrid(x_grid, y_grid)
+                    Z = np.zeros_like(X)
+                    
+                    # 각 카운터/검색대 위치에서 가우시안 번짐 효과 누적
+                    for _, row in time_df.iterrows():
+                        cx, cy, val = row['x'], row['y'], row['num_people']
+                        if val <= 0: continue
+                        # 2D Gaussian Formula: 지점을 중심으로 동그랗게 번지는 연기 효과
+                        dist_sq = (X - cx)**2 + (Y - cy)**2
+                        Z += val * np.exp(-dist_sq / (2 * sigma**2))
+                    return x_grid, y_grid, Z
+
+                # 기준이 되는 전체 데이터의 최대 밀도값 계산 (컬러바 고정용)
+                max_density = 0
+                for t in unique_times:
+                    _, _, tmp_Z = generate_smooth_density(anim_base[anim_base['시간'] == t], img_width, img_height)
+                    if tmp_Z.max() > max_density:
+                        max_density = tmp_Z.max()
+                if max_density == 0: max_density = 1.0
+
+                # 3. 초기 프레임 데이터 생성
                 first_time = unique_times[0]
                 init_data = anim_base[anim_base['시간'] == first_time]
-                
+                x_grid, y_grid, init_Z = generate_smooth_density(init_data, img_width, img_height)
+
                 fig_anim = go.Figure()
 
                 # 공항 배경 이미지 레이아웃 탑재
                 fig_anim.add_layout_image(dict(
                     source=img, xref="x", yref="y", x=0, y=0, 
                     sizex=img_width, sizey=img_height, 
-                    sizing="stretch", opacity=0.75, layer="below"
+                    sizing="stretch", opacity=0.8, layer="below"
                 ))
 
-                # 2. 🌟 [전형적인 히트맵 구현] Histogram2dContour + 가우시안 블러링
-                # x, y 좌표에 가중치(z)를 주어 경계선 없이 은은하게 퍼지는 밀도장을 형성합니다.
-                fig_anim.add_trace(go.Histogram2dContour(
-                    x=init_data['x'],
-                    y=init_data['y'],
-                    z=init_data['num_people'],
-                    histfunc="sum",
-                    name="혼잡 밀도",
-                    colorscale="YlOrRd",      # 전형적인 핫스팟 컬러 (노랑-주황-빨강)
-                    ncontours=30,             # 등고선 단계를 촘촘하게 쪼개서 부드럽게 연결
-                    contours=dict(
-                        coloring="heatmap",   # 면 전체를 채우는 히트맵 모드
-                        showlines=False       # 경계선(테두리)을 완전히 지워 안개처럼 연출
-                    ),
-                    line=dict(smoothing=1.0), # 곡선을 최대로 부드럽게 처리
-                    opacity=0.65,             # 도면이 비쳐 보이도록 투명도 설정
+                # 4. 부드러운 열감지 히트맵 레이어 주입
+                fig_anim.add_trace(go.Heatmap(
+                    x=x_grid,
+                    y=y_grid,
+                    z=init_Z,
+                    colorscale="YlOrRd",   # 노랑 -> 주황 -> 빨강의 전형적인 핫스팟 컬러
+                    zmin=0,
+                    zmax=max_density,
+                    opacity=0.6,           # 공항 도면이 은은하게 비치도록 세팅
                     showscale=True,
                     colorbar=dict(title="인파 밀도 지수", thickness=15, len=0.8)
                 ))
 
-                # 3. 애니메이션 프레임 가속 엔진 구축
+                # 5. 애니메이션 프레임 고속 빌드 (모든 프레임에 가우시안 안개 적용)
                 frames = []
                 for t in unique_times:
                     t_data = anim_base[anim_base['시간'] == t]
+                    _, _, t_Z = generate_smooth_density(t_data, img_width, img_height)
                     frames.append(go.Frame(
-                        data=[go.Histogram2dContour(
-                            x=t_data['x'],
-                            y=t_data['y'],
-                            z=t_data['num_people'],
-                            histfunc="sum",
-                            ncontours=30,
-                            contours=dict(coloring="heatmap", showlines=False),
-                            line=dict(smoothing=1.0)
-                        )],
+                        data=[go.Heatmap(x=x_grid, y=y_grid, z=t_Z)],
                         name=t
                     ))
                 fig_anim.frames = frames
 
-                # 4. 🕹️ 슬라이더 및 재생/일시정지 제어
+                # 6. 🕹️ 플레이어 컨트롤 및 부드러운 화면 전환 설정
                 fig_anim.update_layout(
                     template="plotly_dark",
                     height=650,
@@ -142,9 +160,9 @@ if df is not None and coords is not None:
                                 "label": "▶️ Play (자동 관제)",
                                 "method": "animate",
                                 "args": [None, {
-                                    "frame": {"duration": 120, "redraw": True}, 
+                                    "frame": {"duration": 150, "redraw": True}, 
                                     "fromcurrent": True, 
-                                    "transition": {"duration": 80, "easing": "linear"}
+                                    "transition": {"duration": 100, "easing": "linear"} # 물들듯 자연스럽게
                                 }]
                             },
                             {
@@ -172,7 +190,7 @@ if df is not None and coords is not None:
                     }]
                 )
 
-                # 이미지 뷰포트 고정
+                # 뷰포트 고정
                 fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
                 fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True)
 
