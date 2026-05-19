@@ -62,11 +62,10 @@ if df is not None and coords is not None:
 
     # 탭 구성
     tab1, tab2, tab3, tab4 = st.tabs(["🚀 실시간 통합 관제", "🕒 시간대별 피크 분석", "🔍 구역별 상세 비교 분석", "🛡️ 안전 관리 및 위기 대응"])
-# --- [TAB 1] 실시간 통합 관제 (완벽한 가우시안 안개 번짐 모드) ---
+# --- [TAB 1] 실시간 통합 관제 (용량 초과 완벽 해결 모드) ---
     with tab1:
-        st.title("📊 실시간 관제 현황 (가우시안 인파 밀도 맵)")
-        st.caption("💡 ▶️ Play 버튼을 누르면 인파가 몰리는 구역을 중심으로 붉은 안개가 은은하게 피어오릅니다.")
-
+        st.title("📊 실시간 관제 현황 (경량화 가우시안 히트맵)")
+        
         if os.path.exists(bg_img_path):
             img = Image.open(bg_img_path)
             img_width, img_height = img.size
@@ -80,41 +79,54 @@ if df is not None and coords is not None:
             if anim_base.empty:
                 st.warning("관제 데이터가 존재하지 않습니다.")
             else:
-                # 2. 🌟 [직사각형/등고선 파괴] 수학적 가우시안 안개 생성 함수
-                # Plotly 엔진 대신 파이썬이 직접 촘촘한 밀도 격자를 부드럽게 계산합니다.
-                def generate_smooth_density(time_df, width, height, num_grid=150, sigma=45):
-                    """
-                    공항 도면 크기에 맞춰 촘촘한 격자를 만들고, 
-                    각 카운터 좌표에서 인원수만큼 부드러운 안개(Gaussian)를 뿌려줍니다.
-                    """
-                    # 도면 크기에 맞춘 부드러운 x, y 격자 생성
+                # 🌟 Streamlit 세션 상태를 이용한 애니메이션 제어 변수 초기화
+                if 'anim_index' not in st.session_state:
+                    st.session_state.anim_index = 0
+                if 'is_playing' not in st.session_state:
+                    st.session_state.is_playing = False
+
+                # 2. 재생 / 일시정지 제어용 버튼 배치
+                col1, col2, _ = st.columns([1.5, 1.5, 7])
+                with col1:
+                    if st.button("▶️ Play", use_container_width=True):
+                        st.session_state.is_playing = True
+                with col2:
+                    if st.button("⏸️ Pause", use_container_width=True):
+                        st.session_state.is_playing = False
+
+                # 3. 타임라인 슬라이더 (사용자가 직접 조절도 가능)
+                selected_time = st.select_slider(
+                    "⏱️ 관제 시점 선택",
+                    options=unique_times,
+                    value=unique_times[st.session_state.anim_index],
+                    key="time_slider"
+                )
+                # 슬라이더 조작 시 애니메이션 인덱스 동기화
+                st.session_state.anim_index = unique_times.index(selected_time)
+
+                # 4. 🔥 [경량화 핵심] 현재 시점의 단 1개 프레임만 가우시안 연산
+                def get_single_density(time_df, width, height, num_grid=120, sigma=40):
+                    # 용량과 해상도의 타협점 (grid 120으로 소폭 경량화, sigma로 부드러움 유지)
                     x_grid = np.linspace(0, width, num_grid)
                     y_grid = np.linspace(0, height, num_grid)
                     X, Y = np.meshgrid(x_grid, y_grid)
                     Z = np.zeros_like(X)
                     
-                    # 각 카운터/검색대 위치에서 가우시안 번짐 효과 누적
                     for _, row in time_df.iterrows():
                         cx, cy, val = row['x'], row['y'], row['num_people']
                         if val <= 0: continue
-                        # 2D Gaussian Formula: 지점을 중심으로 동그랗게 번지는 연기 효과
                         dist_sq = (X - cx)**2 + (Y - cy)**2
                         Z += val * np.exp(-dist_sq / (2 * sigma**2))
                     return x_grid, y_grid, Z
 
-                # 기준이 되는 전체 데이터의 최대 밀도값 계산 (컬러바 고정용)
-                max_density = 0
-                for t in unique_times:
-                    _, _, tmp_Z = generate_smooth_density(anim_base[anim_base['시간'] == t], img_width, img_height)
-                    if tmp_Z.max() > max_density:
-                        max_density = tmp_Z.max()
-                if max_density == 0: max_density = 1.0
+                # 현재 선택된 시간의 데이터만 필터링해서 히트맵 생성
+                current_df = anim_base[anim_base['시간'] == selected_time]
+                x_grid, y_grid, current_Z = get_single_density(current_df, img_width, img_height)
 
-                # 3. 초기 프레임 데이터 생성
-                first_time = unique_times[0]
-                init_data = anim_base[anim_base['시간'] == first_time]
-                x_grid, y_grid, init_Z = generate_smooth_density(init_data, img_width, img_height)
+                # 전체 데이터 기준 최대값 설정 (스케일 고정용)
+                max_people_val = anim_base['num_people'].max() if anim_base['num_people'].max() > 0 else 1.0
 
+                # 5. Plotly Figure 빌드 (애니메이션 프레임을 넣지 않아 가벼움)
                 fig_anim = go.Figure()
 
                 # 공항 배경 이미지 레이아웃 탑재
@@ -124,78 +136,40 @@ if df is not None and coords is not None:
                     sizing="stretch", opacity=0.8, layer="below"
                 ))
 
-                # 4. 부드러운 열감지 히트맵 레이어 주입
+                # 오직 단 하나의 히트맵 레이어만 주입
                 fig_anim.add_trace(go.Heatmap(
-                    x=x_grid,
-                    y=y_grid,
-                    z=init_Z,
-                    colorscale="YlOrRd",   # 노랑 -> 주황 -> 빨강의 전형적인 핫스팟 컬러
-                    zmin=0,
-                    zmax=max_density,
-                    opacity=0.6,           # 공항 도면이 은은하게 비치도록 세팅
+                    x=x_grid, y=y_grid, z=current_Z,
+                    colorscale="YlOrRd",
+                    zmin=0, zmax=max_people_val * 0.5, # 핫스팟이 너무 먹먹하지 않고 은은하게 퍼지도록 임계값 조정
+                    opacity=0.6,
                     showscale=True,
                     colorbar=dict(title="인파 밀도 지수", thickness=15, len=0.8)
                 ))
 
-                # 5. 애니메이션 프레임 고속 빌드 (모든 프레임에 가우시안 안개 적용)
-                frames = []
-                for t in unique_times:
-                    t_data = anim_base[anim_base['시간'] == t]
-                    _, _, t_Z = generate_smooth_density(t_data, img_width, img_height)
-                    frames.append(go.Frame(
-                        data=[go.Heatmap(x=x_grid, y=y_grid, z=t_Z)],
-                        name=t
-                    ))
-                fig_anim.frames = frames
-
-                # 6. 🕹️ 플레이어 컨트롤 및 부드러운 화면 전환 설정
                 fig_anim.update_layout(
                     template="plotly_dark",
-                    height=650,
-                    margin=dict(l=10, r=10, b=10, t=40),
-                    updatemenus=[{
-                        "type": "buttons",
-                        "buttons": [
-                            {
-                                "label": "▶️ Play (자동 관제)",
-                                "method": "animate",
-                                "args": [None, {
-                                    "frame": {"duration": 150, "redraw": True}, 
-                                    "fromcurrent": True, 
-                                    "transition": {"duration": 100, "easing": "linear"} # 물들듯 자연스럽게
-                                }]
-                            },
-                            {
-                                "label": "⏸️ Pause",
-                                "method": "animate",
-                                "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]
-                            }
-                        ],
-                        "direction": "left", "pad": {"r": 10, "t": 10}, "showactive": False,
-                        "x": 0.0, "xanchor": "left", "y": 1.1, "yanchor": "top"
-                    }],
-                    sliders=[{
-                        "active": 0,
-                        "yanchor": "top", "xanchor": "left",
-                        "currentvalue": {
-                            "font": {"size": 15, "color": "#FF4B4B"}, 
-                            "prefix": "⏱️ 관제 시점: ", 
-                            "visible": True
-                        },
-                        "pad": {"b": 10, "t": 50}, "len": 1.0, "x": 0.0, "y": 0,
-                        "steps": [{
-                            "args": [[f.name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
-                            "label": f.name, "method": "animate"
-                        } for f in frames]
-                    }]
+                    height=600,
+                    margin=dict(l=10, r=10, b=10, t=10),
+                    showlegend=False
                 )
 
-                # 뷰포트 고정
                 fig_anim.update_xaxes(visible=False, range=[0, img_width], fixedrange=True)
                 fig_anim.update_yaxes(visible=False, range=[img_height, 0], fixedrange=True)
 
+                # 차트 출력
                 st.plotly_chart(fig_anim, use_container_width=True)
-        
+
+                # 6. 🔄 Play 상태일 때 다음 프레임으로 자율 이동 (st.rerun 트리거)
+                if st.session_state.is_playing:
+                    if st.session_state.anim_index < len(unique_times) - 1:
+                        st.session_state.anim_index += 1
+                        import time
+                        time.sleep(0.05) # 애니메이션 속도 조절 (초 단위 프레임 전환 간격)
+                        st.rerun()
+                    else:
+                        st.session_state.is_playing = False # 끝까지 도달하면 정지
+                        st.session_state.anim_index = 0
+                        st.rerun()
         else:
             st.error("공항 배경 이미지(ICN_Airport_3F.png)를 찾을 수 없습니다.")
     # --- [TAB 2] 시간대별 피크 분석 ---
