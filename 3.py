@@ -118,24 +118,4 @@ with tab1[0]:
     if exists:
         render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
     else:
-        st.error("해당 날짜의 데이터가 없습니다.")    
-    # 📍 체류 여객 총합 표시 (추가된 부분)
-    st.metric(label=f"👥 {idx_to_label[selected_t_index]} 기준 총 체류 여객", value=f"{total_people:,} 명")
-    
-    st.subheader(f"📍 {target_date_str} 혼잡도 도면")
-    heatmap = generate_density_heatmap(area_df, current_counts, bg_img.shape)
-    st.image(cv2.cvtColor(cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0), cv2.COLOR_BGR2RGB), use_container_width=True)
-
-# --- 메인 실행부 ---
-st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
-tab1 = st.tabs(["📊 과거 데이터 이력 분석"])
-
-with tab1[0]:
-    selected_date = st.date_input("📅 조회할 날짜 선택", value=datetime.date(2025, 10, 4))
-    target_date_str = selected_date.strftime("%Y-%m-%d")
-    area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
-    
-    if exists:
-        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
-    else:
         st.error("해당 날짜의 데이터가 없습니다.")
