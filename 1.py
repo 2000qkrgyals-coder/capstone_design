@@ -2,7 +2,6 @@ import datetime
 import time
 import random
 import cv2
-import uuid
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -131,6 +130,7 @@ def generate_density_heatmap(area_df, current_counts, img_shape, is_live_mode):
     else:
         return np.zeros((height, width, 3), dtype=np.uint8)
 
+@st.fragment
 def render_live_dashboard(area_df, bg_img, THRESHOLD):
     current_counts = get_virtual_realtime_data(area_df)
     time_now_str = datetime.datetime.now().strftime("%H:%M:%S")
@@ -181,6 +181,7 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
     time.sleep(10.0)
     st.rerun()
 
+@st.fragment
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     time_labels = [index_to_time_str(t) for t in time_options]
@@ -207,8 +208,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
                 "🕒 조회 시간 선택",
                 options=time_options,
                 value=selected_t_index,
-                format_func=lambda x: idx_to_label_map.get(x, str(x)),
-                key=f"past_slider_{uuid.uuid4()}" # 매번 새로운 고유 ID 생성
+                format_func=lambda x: idx_to_label_map.get(x, str(x))
             )
             st.session_state.current_index_ptr = time_options.index(selected_t_index)
     
@@ -294,26 +294,30 @@ if "live_trend_data" not in st.session_state:
 st.title("✈️ 인천국제공항 T2 3층 혼잡도 관제 시스템")
 st.markdown("---")
 
-# 탭을 생성합니다.
-tab1, tab2 = st.tabs(["🔴 실시간 관제 스트리밍", "📅 과거 데이터 분석"])
+area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
 
-# 탭 1: 실시간 관제
-with tab1:
-    area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
-    st.session_state.is_simulating = False
-    render_live_dashboard(area_df, bg_img, THRESHOLD)
+is_live = st.toggle("🚨 LIVE 실시간 관제 스트리밍 모드", value=False)
+st.markdown("---")
 
-# 탭 2: 과거 데이터 분석
-with tab2:
-    selected_date = st.date_input(
-        "📅 조회할 날짜를 선택하세요", 
-        value=datetime.date(2025, 10, 4),
-        key="date_input_tab2" # 탭 간의 키 충돌 방지
-    )
-    target_date_str = selected_date.strftime("%Y-%m-%d")
-    past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
-    
-    if past_file_exists:
-        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
+# 📍 [해결의 핵심] 화면 잔상 제거용 메인 고정 컨테이너 정의
+main_display_zone = st.empty()
+
+# 토글 상태에 따라 고정 영역 내부를 완전히 새로 그려 이전 잔상을 소거합니다.
+with main_display_zone.container():
+    if is_live:
+        st.session_state.is_simulating = False
+        render_live_dashboard(area_df, bg_img, THRESHOLD)
     else:
-        st.error("해당 날짜의 데이터 파일을 찾을 수 없습니다.")
+        selected_date = st.date_input(
+            "📅 조회할 날짜를 선택하세요",
+            value=datetime.date(2025, 10, 4),  
+            min_value=datetime.date(2025, 9, 1),
+            max_value=datetime.date(2025, 10, 31)
+        )
+        target_date_str = selected_date.strftime("%Y-%m-%d")
+        past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
+        
+        if not past_file_exists:
+            st.error(f"❌ 해당 날짜({target_date_str})의 데이터 파일이 존재하지 않습니다.")
+        else:
+            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
