@@ -131,7 +131,6 @@ def generate_density_heatmap(area_df, current_counts, img_shape, is_live_mode):
     else:
         return np.zeros((height, width, 3), dtype=np.uint8)
 
-@st.fragment
 def render_live_dashboard(area_df, bg_img, THRESHOLD):
     current_counts = get_virtual_realtime_data(area_df)
     time_now_str = datetime.datetime.now().strftime("%H:%M:%S")
@@ -182,7 +181,6 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
     time.sleep(10.0)
     st.rerun()
 
-@st.fragment
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     time_labels = [index_to_time_str(t) for t in time_options]
@@ -297,30 +295,24 @@ st.title("✈️ 인천국제공항 T2 3층 혼잡도 관제 시스템")
 st.markdown("---")
 
 area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
-
 is_live = st.toggle("🚨 LIVE 실시간 관제 스트리밍 모드", value=False)
 st.markdown("---")
 
-# [수정] st.empty()를 지우고, 그냥 컨테이너를 하나 만듭니다.
+# 1. 'main_container'라는 상자를 만듭니다.
 main_container = st.container()
 
-# [수정] 이 상자(main_container) 안에 내용물을 넣습니다.
+# 2. 이 상자 안에 상황에 맞는 화면을 담습니다.
 with main_container:
     if is_live:
         st.session_state.is_simulating = False
         render_live_dashboard(area_df, bg_img, THRESHOLD)
     else:
-        selected_date = st.date_input(
-            "📅 조회할 날짜를 선택하세요",
-            value=datetime.date(2025, 10, 4),  
-            min_value=datetime.date(2025, 9, 1),
-            max_value=datetime.date(2025, 10, 31)
-        )
+        # (과거 날짜 선택 및 화면 출력 코드)
+        selected_date = st.date_input("📅 조회할 날짜를 선택하세요", value=datetime.date(2025, 10, 4))
         target_date_str = selected_date.strftime("%Y-%m-%d")
         past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
         
-        if not past_file_exists:
-            st.error(f"❌ 해당 날짜({target_date_str})의 데이터 파일이 존재하지 않습니다.")
+        if past_file_exists:
+            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
         else:
-            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
-            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
+            st.error("데이터 파일을 찾을 수 없습니다.")
