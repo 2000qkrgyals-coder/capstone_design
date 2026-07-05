@@ -135,7 +135,17 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
     current_counts = get_virtual_realtime_data(area_df)
     time_now_str = datetime.datetime.now().strftime("%H:%M:%S")
     total_airport_people = sum(current_counts.values())
-    
+
+    def calculate_staffing(people_cnt):
+    # 5명당 창구 1개, 최대 40개
+    open_counters = min(int(np.ceil(people_cnt / 5)), 40)
+    # 80명 초과 시 지원인력 1명 추가, 최대 3명
+    support_staff = 0
+    if people_cnt > 80:
+        support_staff = min(int((people_cnt - 80) / 40) + 1, 3)
+    total_staff = open_counters + support_staff
+    return open_counters, total_staff, support_staff
+
     prev_total = st.session_state.live_trend_data["전체 여객 수"].iloc[-1] if not st.session_state.live_trend_data.empty else total_airport_people
     delta_people = int(total_airport_people - prev_total)
     
@@ -160,13 +170,18 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
         st.line_chart(st.session_state.live_trend_data.set_index("시간"), height=200)
         
     with col_bot2:
-        st.subheader("📊 구역별 상세 모니터링")
-        sorted_areas = sorted(current_counts.items(), key=lambda x: x[1], reverse=True)
-        for name, cnt in sorted_areas[:4]:
-            pct = min(cnt / THRESHOLD, 1.0) 
-            status_label = "🔴 혼잡" if cnt >= THRESHOLD else ("🟡 주의" if cnt >= int(THRESHOLD * 0.6) else "🟢 원활")
-            st.markdown(f"**카운터 {name}** : `{cnt}명` ({status_label})")
-            st.progress(pct)
+    st.subheader("📊 구역별 상세 모니터링")
+    sorted_areas = sorted(current_counts.items(), key=lambda x: x[1], reverse=True)
+    for name, cnt in sorted_areas[:4]:
+        pct = min(cnt / THRESHOLD, 1.0)
+        open_cnt, total_staff, support_staff = calculate_staffing(cnt) # 로직 적용
+        
+        status_label = "🔴 혼잡" if cnt >= THRESHOLD else ("🟡 주의" if cnt >= int(THRESHOLD * 0.6) else "🟢 원활")
+        
+        # 상세 운영 정보 추가
+        st.markdown(f"**{name}** : `{cnt}명` ({status_label})")
+        st.caption(f"권고창구: {open_cnt}개 | 배치인력: {total_staff}명 (지원: {support_staff}명)")
+        st.progress(pct)
             
     with col_bot3:
         st.subheader("🚨 실시간 정체 알림")
