@@ -294,26 +294,26 @@ if "live_trend_data" not in st.session_state:
 st.title("✈️ 인천국제공항 T2 3층 혼잡도 관제 시스템")
 st.markdown("---")
 
-# 1. 화면 전체를 관리할 고정 장소를 먼저 만듭니다.
-main_placeholder = st.empty()
+# 탭을 생성합니다.
+tab1, tab2 = st.tabs(["🔴 실시간 관제 스트리밍", "📅 과거 데이터 분석"])
 
-# 2. 로직이 시작될 때마다 기존 main_placeholder를 비우고 다시 채웁니다.
-# 🚨 중요: main_placeholder를 사용해야 이전 화면이 잔상 없이 지워집니다.
-with main_placeholder.container():
+# 탭 1: 실시간 관제
+with tab1:
     area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
-    is_live = st.toggle("🚨 LIVE 실시간 관제 스트리밍 모드", value=False)
-    st.markdown("---")
+    st.session_state.is_simulating = False
+    render_live_dashboard(area_df, bg_img, THRESHOLD)
+
+# 탭 2: 과거 데이터 분석
+with tab2:
+    selected_date = st.date_input(
+        "📅 조회할 날짜를 선택하세요", 
+        value=datetime.date(2025, 10, 4),
+        key="date_input_tab2" # 탭 간의 키 충돌 방지
+    )
+    target_date_str = selected_date.strftime("%Y-%m-%d")
+    past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
     
-    if is_live:
-        st.session_state.is_simulating = False
-        render_live_dashboard(area_df, bg_img, THRESHOLD)
+    if past_file_exists:
+        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
     else:
-        # (과거 데이터 선택 및 분석)
-        selected_date = st.date_input("📅 조회할 날짜를 선택하세요", value=datetime.date(2025, 10, 4))
-        target_date_str = selected_date.strftime("%Y-%m-%d")
-        past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
-        
-        if past_file_exists:
-            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
-        else:
-            st.error("데이터 파일을 찾을 수 없습니다.")
+        st.error("해당 날짜의 데이터 파일을 찾을 수 없습니다.")
