@@ -16,32 +16,9 @@ import streamlit as st
 # - 특정 날짜/시간대의 A~N 체크인카운터 혼잡도 확인
 # - 핵심: 몇 개 창구를 열고, 몇 명을 배치할지 확인
 # =========================================================
-@st.cache_data
-def load_data() -> pd.DataFrame:
-    # 1. 디버깅용 로그 출력
-    st.write("--- 서버 환경 디버깅 ---")
-    import os
-    st.write(f"현재 위치(BASE_DIR): {BASE_DIR}")
-    st.write(f"현재 폴더 내용물: {os.listdir(BASE_DIR)}")
-    
-    # 만약 data 폴더가 있다면 그 안도 확인
-    if "data" in os.listdir(BASE_DIR):
-        st.write(f"data 폴더 내용물: {os.listdir(DATA_DIR)}")
-    # -----------------------
-
-    if not PLAN_PATH.exists():
-        st.error(f"필수 파일이 없습니다: {PLAN_PATH}")
-        st.stop()
-    
-    # ... (나머지 코드)
-
-
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-
-PLAN_PATH = DATA_DIR / "people_counter_plan_by_time.csv.gz"
-
+PLAN_PATH = BASE_DIR / "people_counter_plan_by_time.csv.gz"
 COUNTERS = list("ABCDEFGHIJKLMN")
 
 CAUTION_LINE = 80
