@@ -290,31 +290,34 @@ if "is_simulating" not in st.session_state:
 if "live_trend_data" not in st.session_state:
     st.session_state.live_trend_data = pd.DataFrame(columns=["시간", "전체 여객 수"])
 
-# --- 2. 메인 실행부 (탭 구조로 변경) ---
+# --- 2. 최상단 고정 영역 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 혼잡도 관제 시스템")
 st.markdown("---")
 
-# 탭 생성
-tab1, tab2 = st.tabs(["🚨 실시간 관제 스트리밍", "📊 과거 데이터 분석"])
+area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
 
-# 1. 실시간 탭
-with tab1:
-    st.header("실시간 혼잡도 모니터링")
-    area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
-    render_live_dashboard(area_df, bg_img, THRESHOLD)
+is_live = st.toggle("🚨 LIVE 실시간 관제 스트리밍 모드", value=False)
+st.markdown("---")
 
-# 2. 과거 데이터 탭
-with tab2:
-    st.header("과거 이력 데이터 분석")
-    selected_date = st.date_input(
-        "📅 조회할 날짜를 선택하세요",
-        value=datetime.date(2025, 10, 4),
-        key="past_date_input"
-    )
-    target_date_str = selected_date.strftime("%Y-%m-%d")
-    past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
-    
-    if not past_file_exists:
-        st.error(f"❌ 해당 날짜({target_date_str})의 데이터 파일이 존재하지 않습니다.")
+# 📍 [해결의 핵심] 화면 잔상 제거용 메인 고정 컨테이너 정의
+main_display_zone = st.empty()
+
+# 토글 상태에 따라 고정 영역 내부를 완전히 새로 그려 이전 잔상을 소거합니다.
+with main_display_zone.container():
+    if is_live:
+        st.session_state.is_simulating = False
+        render_live_dashboard(area_df, bg_img, THRESHOLD)
     else:
-        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
+        selected_date = st.date_input(
+            "📅 조회할 날짜를 선택하세요",
+            value=datetime.date(2025, 10, 4),  
+            min_value=datetime.date(2025, 9, 1),
+            max_value=datetime.date(2025, 10, 31)
+        )
+        target_date_str = selected_date.strftime("%Y-%m-%d")
+        past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
+        
+        if not past_file_exists:
+            st.error(f"❌ 해당 날짜({target_date_str})의 데이터 파일이 존재하지 않습니다.")
+        else:
+            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
