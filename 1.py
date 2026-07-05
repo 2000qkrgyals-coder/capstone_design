@@ -299,11 +299,11 @@ area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
 is_live = st.toggle("🚨 LIVE 실시간 관제 스트리밍 모드", value=False)
 st.markdown("---")
 
-# 📍 [해결의 핵심] 화면 잔상 제거용 메인 고정 컨테이너 정의
-main_display_zone = st.empty()
+# [수정] st.empty()를 지우고, 그냥 컨테이너를 하나 만듭니다.
+main_container = st.container()
 
-# 토글 상태에 따라 고정 영역 내부를 완전히 새로 그려 이전 잔상을 소거합니다.
-with main_display_zone.container():
+# [수정] 이 상자(main_container) 안에 내용물을 넣습니다.
+with main_container:
     if is_live:
         st.session_state.is_simulating = False
         render_live_dashboard(area_df, bg_img, THRESHOLD)
@@ -320,4 +320,5 @@ with main_display_zone.container():
         if not past_file_exists:
             st.error(f"❌ 해당 날짜({target_date_str})의 데이터 파일이 존재하지 않습니다.")
         else:
+            render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
             render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
