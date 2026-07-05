@@ -11,9 +11,25 @@ BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"
 st.set_page_config(page_title="인천공항 T2 3층 데이터 분석 센터", layout="wide")
 
 # --- 인력 배치 로직 함수 ---
-def calculate_staffing(people_count):
-    # 인원당 5명 기준 창구 오픈 권고 (최대 40개)
-    open_counters = min(40, -(-people_count // 5))  # ceil 연산
+def calculate_staffing(people_count, current_open_counters=None):
+    """
+    people_count: 현재 인원
+    current_open_counters: 현재 열려있는 창구 수 (이전 상태 유지용)
+    """
+    # 1. 인원당 필요 창구 계산 (5명 기준)
+    needed = -(-people_count // 5)
+    needed = min(40, max(0, needed))
+    
+    # 2. 히스테리시스(완충) 적용
+    # 현재 창구 수가 있다면, 급격한 변동을 막기 위한 여유범위 설정
+    if current_open_counters is not None:
+        # 1~2개 정도의 창구는 일시적 인원 변화로 보고 현재 상태를 유지함
+        if abs(needed - current_open_counters) <= 2:
+            return current_open_counters, ... # 기존 값 반환
+
+    open_counters = needed
+    
+    # ... (이하 현장 지원 인력 계산 로직)
     
     # 현장 지원 인력 (80명 초과 시 투입, 최대 3명)
     support_staff = 0
