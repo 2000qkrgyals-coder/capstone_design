@@ -94,11 +94,17 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
     
-    # 1. 제외 구역 필터링 (GH, IM1, IM2 제외)
+    # 1. 제외 구역 필터링
     excluded = ["GH", "IM1", "IM2"]
     filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
+    total_people = sum(filtered_counts.values())
     
-    # 2. 히트맵을 상단으로 이동
+    # 2. 상단: 총 체류 여객만 표시
+    st.metric("현재 총 체류 여객", f"{total_people:,} 명")
+    
+    st.divider()
+    
+    # 3. 히트맵
     st.subheader("📊 구역별 혼잡도 히트맵")
     heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
@@ -106,23 +112,14 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     st.divider()
     
-    # 3. 전체 KPI 계산 (필터링된 데이터 기준)
-    total_people = sum(filtered_counts.values())
-    open_cnt, sup_cnt, tot_staff = calculate_staffing(total_people)
-
-    st.metric("현재 총 체류 여객", f"{total_people:,} 명")
-    
-    st.divider()
-
-    # 4. 구역별 상세 운영 가이드 (0개 표시 로직)
+    # 4. 하단: 구역별 상세 운영 권고 (0개 포함)
     st.subheader("📍 구역별 운영 권고 상세")
     
     detailed_data = []
-    # 모든 주요 구역을 순회하며 데이터 생성
     for area in sorted(filtered_counts.keys()):
         count = filtered_counts.get(area, 0)
-        # 0명인 경우 0개로 표시되도록 계산 로직 처리
-        area_open = 0 if count == 0 else calculate_staffing(count)[0]
+        # 5명 기준 창구 계산 (인원이 없으면 0개)
+        area_open = 0 if count <= 0 else min(40, -(-int(count) // 5))
         
         detailed_data.append({
             "구역": area,
