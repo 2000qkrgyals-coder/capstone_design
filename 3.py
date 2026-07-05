@@ -76,12 +76,11 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
-    total_people = sum(current_counts.values())
     
-    # 인력 배치 계산
+    # 1. 전체 KPI 계산
+    total_people = sum(current_counts.values())
     open_cnt, sup_cnt, tot_staff = calculate_staffing(total_people)
     
-    # 화면 구성 (KPI)
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     kpi1.metric("총 체류 여객", f"{total_people:,} 명")
     kpi2.metric("권고 오픈 창구", f"{open_cnt} 개")
@@ -89,7 +88,31 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     kpi4.metric("총 배치 인력", f"{tot_staff} 명")
     
     st.divider()
+
+    # 2. 구역별 상세 운영 가이드 (새로 추가된 부분)
+    st.subheader("📍 구역별 운영 권고 상세")
     
+    # 데이터를 표로 만들기 위해 리스트 생성
+    detailed_data = []
+    for area, count in current_counts.items():
+        # 각 구역별로 계산 로직 적용
+        area_open, _, _ = calculate_staffing(count)
+        if count > 0:  # 인원이 있는 구역만 표시
+            detailed_data.append({
+                "구역": area,
+                "현재 인원": count,
+                "권고 오픈 창구": f"{area_open} 개"
+            })
+    
+    # Streamlit 데이터프레임으로 출력
+    if detailed_data:
+        st.table(pd.DataFrame(detailed_data))
+    else:
+        st.info("현재 해당 시간에 체류 중인 구역 데이터가 없습니다.")
+    
+    st.divider()
+    
+    # 3. 히트맵 시각화
     heatmap = generate_density_heatmap(area_df, current_counts, bg_img.shape)
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
     st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
