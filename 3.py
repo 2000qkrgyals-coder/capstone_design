@@ -10,7 +10,7 @@ BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"
 
 st.set_page_config(page_title="인천공항 T2 3층 데이터 분석 센터", layout="wide")
 
-# --- 공통 함수 ---
+# --- 인력 배치 로직 함수 ---
 def calculate_staffing(people_count):
     # 인원당 5명 기준 창구 오픈 권고 (최대 40개)
     open_counters = min(40, -(-people_count // 5))  # ceil 연산
@@ -22,7 +22,8 @@ def calculate_staffing(people_count):
         
     total_staff = open_counters + support_staff
     return open_counters, support_staff, total_staff
-    
+
+# --- 공통 함수 ---
 def index_to_time_str(t_index):
     total_seconds = int(t_index) * 10
     hours, minutes = total_seconds // 3600, (total_seconds % 3600) // 60
@@ -44,7 +45,6 @@ def load_data_by_date(selected_date_str):
         time_grouped_data[t_index] = {'counts': dict(zip(filtered['area'], filtered['num_people']))}
     return area_df, time_grouped_data, sorted(list(time_grouped_data.keys())), bg_img, True
 
-# 히트맵 생성 
 def generate_density_heatmap(area_df, current_counts, img_shape):
     height, width, _ = img_shape
     heatmap_grid = np.zeros((height, width), dtype=np.float32)
@@ -53,25 +53,18 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
     for _, row in area_df.iterrows():
         people_cnt = current_counts.get(row['area_name'], 0)
         if people_cnt > 0:
-            # 구역 중심점 계산
             cX = int((row['x1'] + row['x2'] + row['x3'] + row['x4']) / 4)
             cY = int((row['y1'] + row['y2'] + row['y3'] + row['y4']) / 4)
-            
-            # 입자 분포 생성
             num_particles = int(people_cnt * 4)
             rand_x = np.random.normal(cX, 100, num_particles).astype(np.int32)
             rand_y = np.random.normal(cY, 50, num_particles).astype(np.int32)
-            
             valid = (rand_x >= 0) & (rand_x < width) & (rand_y >= 0) & (rand_y < height)
-            for x, y in zip(rand_x[valid], rand_y[valid]):
-                heatmap_grid[y, x] += 1.0
+            for x, y in zip(rand_x[valid], rand_y[valid]): heatmap_grid[y, x] += 1.0
 
     if heatmap_grid.max() > 0:
         heatmap_smooth = cv2.GaussianBlur(heatmap_grid, (175, 175), 0)
         heatmap_norm = (heatmap_smooth / heatmap_smooth.max() * 255).astype(np.uint8)
         heatmap_color = cv2.applyColorMap(heatmap_norm, cv2.COLORMAP_JET)
-        
-        # 투명도 마스크 적용
         _, alpha = cv2.threshold(heatmap_norm, 20, 255, cv2.THRESH_BINARY)
         return cv2.bitwise_and(heatmap_color, heatmap_color, mask=alpha)
     return np.zeros((height, width, 3), dtype=np.uint8)
@@ -85,7 +78,17 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     current_counts = past_time_data[selected_t_index]['counts']
     total_people = sum(current_counts.values())
     
-    st.metric(label=f"👥 {idx_to_label[selected_t_index]} 기준 총 체류 여객", value=f"{total_people:,} 명")
+    # 인력 배치 계산
+    open_cnt, sup_cnt, tot_staff = calculate_staffing(total_people)
+    
+    # 화면 구성 (KPI)
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("총 체류 여객", f"{total_people:,} 명")
+    kpi2.metric("권고 오픈 창구", f"{open_cnt} 개")
+    kpi3.metric("현장 지원 인력", f"{sup_cnt} 명")
+    kpi4.metric("총 배치 인력", f"{tot_staff} 명")
+    
+    st.divider()
     
     heatmap = generate_density_heatmap(area_df, current_counts, bg_img.shape)
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
@@ -103,4 +106,4 @@ with tab1[0]:
     if exists:
         render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, 75)
     else:
-        st.error("해당 날짜의 데이터 파일이 없습니다. (파일명을 확인해주세요)")
+        st.error("해당 날짜의 데이터 파일이 없습니다.")
