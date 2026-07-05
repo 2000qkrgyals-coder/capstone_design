@@ -109,12 +109,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     # 3. 전체 KPI 계산 (필터링된 데이터 기준)
     total_people = sum(filtered_counts.values())
     open_cnt, sup_cnt, tot_staff = calculate_staffing(total_people)
-    
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("총 체류 여객", f"{total_people:,} 명")
-    kpi2.metric("권고 오픈 창구", f"{open_cnt} 개")
-    kpi3.metric("현장 지원 인력", f"{sup_cnt} 명")
-    kpi4.metric("총 배치 인력", f"{tot_staff} 명")
 
     st.metric("현재 총 체류 여객", f"{total_people:,} 명")
     
