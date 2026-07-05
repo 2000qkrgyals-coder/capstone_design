@@ -16,6 +16,22 @@ import streamlit as st
 # - 특정 날짜/시간대의 A~N 체크인카운터 혼잡도 확인
 # - 핵심: 몇 개 창구를 열고, 몇 명을 배치할지 확인
 # =========================================================
+@st.cache_data
+def load_data() -> pd.DataFrame:
+    # --- 확인용 코드 추가 ---
+    import os
+    st.write("--- 디버깅 정보 ---")
+    st.write(f"코드상 경로: {PLAN_PATH}")
+    st.write(f"실제 존재 여부: {PLAN_PATH.exists()}")
+    st.write(f"현재 위치(BASE_DIR)의 파일 목록: {os.listdir(BASE_DIR)}")
+    # -----------------------
+
+    if not PLAN_PATH.exists():
+        st.error(f"필수 파일이 없습니다: {PLAN_PATH}")
+        st.stop()
+    
+    # ... 아래 기존 코드 ...
+
 
 
 BASE_DIR = Path(__file__).resolve().parent
