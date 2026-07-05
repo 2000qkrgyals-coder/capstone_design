@@ -170,18 +170,18 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
         st.line_chart(st.session_state.live_trend_data.set_index("시간"), height=200)
         
     with col_bot2:
-    st.subheader("📊 구역별 상세 모니터링")
-    sorted_areas = sorted(current_counts.items(), key=lambda x: x[1], reverse=True)
-    for name, cnt in sorted_areas[:4]:
-        pct = min(cnt / THRESHOLD, 1.0)
-        open_cnt, total_staff, support_staff = calculate_staffing(cnt) # 로직 적용
-        
-        status_label = "🔴 혼잡" if cnt >= THRESHOLD else ("🟡 주의" if cnt >= int(THRESHOLD * 0.6) else "🟢 원활")
-        
-        # 상세 운영 정보 추가
-        st.markdown(f"**{name}** : `{cnt}명` ({status_label})")
-        st.caption(f"권고창구: {open_cnt}개 | 배치인력: {total_staff}명 (지원: {support_staff}명)")
-        st.progress(pct)
+        st.subheader("📊 구역별 상세 모니터링")
+        sorted_areas = sorted(current_counts.items(), key=lambda x: x[1], reverse=True)
+        for name, cnt in sorted_areas[:4]:
+            pct = min(cnt / THRESHOLD, 1.0)
+            open_cnt, total_staff, support_staff = calculate_staffing(cnt) # 로직 적용
+            
+            status_label = "🔴 혼잡" if cnt >= THRESHOLD else ("🟡 주의" if cnt >= int(THRESHOLD * 0.6) else "🟢 원활")
+            
+            # 상세 운영 정보 추가
+            st.markdown(f"**{name}** : `{cnt}명` ({status_label})")
+            st.caption(f"권고창구: {open_cnt}개 | 배치인력: {total_staff}명 (지원: {support_staff}명)")
+            st.progress(pct)
             
     with col_bot3:
         st.subheader("🚨 실시간 정체 알림")
