@@ -18,19 +18,22 @@ import streamlit as st
 # =========================================================
 @st.cache_data
 def load_data() -> pd.DataFrame:
-    # --- 확인용 코드 추가 ---
+    # 1. 디버깅용 로그 출력
+    st.write("--- 서버 환경 디버깅 ---")
     import os
-    st.write("--- 디버깅 정보 ---")
-    st.write(f"코드상 경로: {PLAN_PATH}")
-    st.write(f"실제 존재 여부: {PLAN_PATH.exists()}")
-    st.write(f"현재 위치(BASE_DIR)의 파일 목록: {os.listdir(BASE_DIR)}")
+    st.write(f"현재 위치(BASE_DIR): {BASE_DIR}")
+    st.write(f"현재 폴더 내용물: {os.listdir(BASE_DIR)}")
+    
+    # 만약 data 폴더가 있다면 그 안도 확인
+    if "data" in os.listdir(BASE_DIR):
+        st.write(f"data 폴더 내용물: {os.listdir(DATA_DIR)}")
     # -----------------------
 
     if not PLAN_PATH.exists():
         st.error(f"필수 파일이 없습니다: {PLAN_PATH}")
         st.stop()
     
-    # ... 아래 기존 코드 ...
+    # ... (나머지 코드)
 
 
 
