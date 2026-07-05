@@ -70,6 +70,7 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
     return np.zeros((height, width, 3), dtype=np.uint8)
 
 @st.fragment
+@st.fragment
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
@@ -77,8 +78,20 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
     
-    # 1. 전체 KPI 계산
-    total_people = sum(current_counts.values())
+    # 1. 제외 구역 필터링 (GH, IM1, IM2 제외)
+    excluded = ["GH", "IM1", "IM2"]
+    filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
+    
+    # 2. 히트맵을 상단으로 이동
+    st.subheader("📊 구역별 혼잡도 히트맵")
+    heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
+    blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
+    st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
+    
+    st.divider()
+    
+    # 3. 전체 KPI 계산 (필터링된 데이터 기준)
+    total_people = sum(filtered_counts.values())
     open_cnt, sup_cnt, tot_staff = calculate_staffing(total_people)
     
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
@@ -89,33 +102,24 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     st.divider()
 
-    # 2. 구역별 상세 운영 가이드 (새로 추가된 부분)
+    # 4. 구역별 상세 운영 가이드 (0개 표시 로직)
     st.subheader("📍 구역별 운영 권고 상세")
     
-    # 데이터를 표로 만들기 위해 리스트 생성
     detailed_data = []
-    for area, count in current_counts.items():
-        # 각 구역별로 계산 로직 적용
-        area_open, _, _ = calculate_staffing(count)
-        if count > 0:  # 인원이 있는 구역만 표시
-            detailed_data.append({
-                "구역": area,
-                "현재 인원": count,
-                "권고 오픈 창구": f"{area_open} 개"
-            })
+    # 모든 주요 구역을 순회하며 데이터 생성
+    for area in sorted(filtered_counts.keys()):
+        count = filtered_counts.get(area, 0)
+        # 0명인 경우 0개로 표시되도록 계산 로직 처리
+        area_open = 0 if count == 0 else calculate_staffing(count)[0]
+        
+        detailed_data.append({
+            "구역": area,
+            "현재 인원": f"{int(count)} 명",
+            "권고 오픈 창구": f"{area_open} 개"
+        })
     
-    # Streamlit 데이터프레임으로 출력
     if detailed_data:
         st.table(pd.DataFrame(detailed_data))
-    else:
-        st.info("현재 해당 시간에 체류 중인 구역 데이터가 없습니다.")
-    
-    st.divider()
-    
-    # 3. 히트맵 시각화
-    heatmap = generate_density_heatmap(area_df, current_counts, bg_img.shape)
-    blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
-    st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
 
 # --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
