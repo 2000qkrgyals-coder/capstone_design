@@ -209,7 +209,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
                 options=time_options,
                 value=selected_t_index,
                 format_func=lambda x: idx_to_label_map.get(x, str(x)),
-                key=f"past_slider_{target_date_str}"
+                key=f"past_slider_{uuid.uuid4()}" # 매번 새로운 고유 ID 생성
             )
             st.session_state.current_index_ptr = time_options.index(selected_t_index)
     
