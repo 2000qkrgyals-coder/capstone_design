@@ -115,6 +115,8 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     kpi2.metric("권고 오픈 창구", f"{open_cnt} 개")
     kpi3.metric("현장 지원 인력", f"{sup_cnt} 명")
     kpi4.metric("총 배치 인력", f"{tot_staff} 명")
+
+    st.metric("현재 총 체류 여객", f"{total_people:,} 명")
     
     st.divider()
 
