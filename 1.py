@@ -137,14 +137,14 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
     total_airport_people = sum(current_counts.values())
 
     def calculate_staffing(people_cnt):
-    # 5명당 창구 1개, 최대 40개
-    open_counters = min(int(np.ceil(people_cnt / 5)), 40)
-    # 80명 초과 시 지원인력 1명 추가, 최대 3명
-    support_staff = 0
-    if people_cnt > 80:
-        support_staff = min(int((people_cnt - 80) / 40) + 1, 3)
-    total_staff = open_counters + support_staff
-    return open_counters, total_staff, support_staff
+        # 5명당 창구 1개, 최대 40개
+        open_counters = min(int(np.ceil(people_cnt / 5)), 40)
+        # 80명 초과 시 지원인력 1명 추가, 최대 3명
+        support_staff = 0
+        if people_cnt > 80:
+            support_staff = min(int((people_cnt - 80) / 40) + 1, 3)
+        total_staff = open_counters + support_staff
+        return open_counters, total_staff, support_staff
 
     prev_total = st.session_state.live_trend_data["전체 여객 수"].iloc[-1] if not st.session_state.live_trend_data.empty else total_airport_people
     delta_people = int(total_airport_people - prev_total)
