@@ -209,6 +209,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
                 options=time_options,
                 value=selected_t_index,
                 format_func=lambda x: idx_to_label_map.get(x, str(x))
+                key="past_slider"
             )
             st.session_state.current_index_ptr = time_options.index(selected_t_index)
     
