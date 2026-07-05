@@ -178,8 +178,7 @@ def render_live_dashboard(area_df, bg_img, THRESHOLD):
         else:
             st.success("🟢 모든 구역 임계치 이하 안전 운영 중")
             
-    time.sleep(10.0)
-    st.rerun()
+    
 
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
@@ -290,30 +289,29 @@ if "is_simulating" not in st.session_state:
 if "live_trend_data" not in st.session_state:
     st.session_state.live_trend_data = pd.DataFrame(columns=["시간", "전체 여객 수"])
 
-# --- 2. 최상단 고정 영역 메인 실행부 ---
+# --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 혼잡도 관제 시스템")
 st.markdown("---")
 
-# 탭을 생성합니다.
-tab1, tab2 = st.tabs(["🔴 실시간 관제 스트리밍", "📅 과거 데이터 분석"])
+# 탭을 만듭니다. 탭을 쓰면 화면이 섞일 일이 없습니다.
+tab1, tab2 = st.tabs(["🔴 실시간 관제", "📅 과거 데이터 분석"])
 
-# 탭 1: 실시간 관제
 with tab1:
+    st.subheader("실시간 모니터링")
     area_df, _, _, bg_img, _ = load_data_by_date("2025-10-04")
-    st.session_state.is_simulating = False
+    # 라이브 대시보드를 그립니다.
     render_live_dashboard(area_df, bg_img, THRESHOLD)
+    # 자동 새로고침 대신 버튼 하나만 추가하세요 (이게 훨씬 안전합니다)
+    if st.button("새로고침"):
+        st.rerun()
 
-# 탭 2: 과거 데이터 분석
 with tab2:
-    selected_date = st.date_input(
-        "📅 조회할 날짜를 선택하세요", 
-        value=datetime.date(2025, 10, 4),
-        key="date_input_tab2" # 탭 간의 키 충돌 방지
-    )
+    st.subheader("과거 데이터 분석")
+    selected_date = st.date_input("날짜 선택", value=datetime.date(2025, 10, 4))
     target_date_str = selected_date.strftime("%Y-%m-%d")
     past_area_df, past_time_data, past_unique_times, past_bg_img, past_file_exists = load_data_by_date(target_date_str)
     
     if past_file_exists:
         render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
     else:
-        st.error("해당 날짜의 데이터 파일을 찾을 수 없습니다.")
+        st.error("데이터 없음")
