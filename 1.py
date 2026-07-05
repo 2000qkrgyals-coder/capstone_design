@@ -2,6 +2,7 @@ import datetime
 import time
 import random
 import cv2
+import uuid
 import numpy as np
 import pandas as pd
 import streamlit as st
