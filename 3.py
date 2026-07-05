@@ -1,5 +1,4 @@
 import datetime
-import time
 import cv2
 import numpy as np
 import pandas as pd
@@ -9,12 +8,7 @@ import streamlit as st
 AREA_FILE_PATH = "terminal_areas_grouped_2.csv"        
 BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"          
 
-# --- 1. 페이지 설정 및 사이드바 ---
 st.set_page_config(page_title="인천공항 T2 3층 데이터 분석 센터", layout="wide")
-
-with st.sidebar:
-    st.header("🎛️ 분석 설정")
-    THRESHOLD = st.slider("🚨 정체 경보 임계치 설정 (명)", 30, 150, 75, 5)
 
 # --- 공통 함수 ---
 def index_to_time_str(t_index):
@@ -38,36 +32,52 @@ def load_data_by_date(selected_date_str):
         time_grouped_data[t_index] = {'counts': dict(zip(filtered['area'], filtered['num_people']))}
     return area_df, time_grouped_data, sorted(list(time_grouped_data.keys())), bg_img, True
 
+# [수정됨] 히트맵 생성 로직 복구
 def generate_density_heatmap(area_df, current_counts, img_shape):
     height, width, _ = img_shape
     heatmap_grid = np.zeros((height, width), dtype=np.float32)
     np.random.seed(42)
     
     for _, row in area_df.iterrows():
-        cnt = current_counts.get(row['area_name'], 0)
-        if cnt > 0:
-            # 히트맵 입자 생성 로직 (생략된 부분)
-            pass
-    return np.zeros((height, width, 3), dtype=np.uint8) # 실제 구현 시 위 함수 활용
+        people_cnt = current_counts.get(row['area_name'], 0)
+        if people_cnt > 0:
+            # 구역 중심점 계산
+            cX = int((row['x1'] + row['x2'] + row['x3'] + row['x4']) / 4)
+            cY = int((row['y1'] + row['y2'] + row['y3'] + row['y4']) / 4)
+            
+            # 입자 분포 생성
+            num_particles = int(people_cnt * 4)
+            rand_x = np.random.normal(cX, 100, num_particles).astype(np.int32)
+            rand_y = np.random.normal(cY, 50, num_particles).astype(np.int32)
+            
+            valid = (rand_x >= 0) & (rand_x < width) & (rand_y >= 0) & (rand_y < height)
+            for x, y in zip(rand_x[valid], rand_y[valid]):
+                heatmap_grid[y, x] += 1.0
+
+    if heatmap_grid.max() > 0:
+        heatmap_smooth = cv2.GaussianBlur(heatmap_grid, (175, 175), 0)
+        heatmap_norm = (heatmap_smooth / heatmap_smooth.max() * 255).astype(np.uint8)
+        heatmap_color = cv2.applyColorMap(heatmap_norm, cv2.COLORMAP_JET)
+        
+        # 투명도 마스크 적용
+        _, alpha = cv2.threshold(heatmap_norm, 20, 255, cv2.THRESH_BINARY)
+        return cv2.bitwise_and(heatmap_color, heatmap_color, mask=alpha)
+    return np.zeros((height, width, 3), dtype=np.uint8)
 
 @st.fragment
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
     
-    # 시간 선택
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
-    
-    # 현재 시간의 데이터
     current_counts = past_time_data[selected_t_index]['counts']
     total_people = sum(current_counts.values())
     
-    # 📍 체류 여객 총합 표시 (추가된 부분)
     st.metric(label=f"👥 {idx_to_label[selected_t_index]} 기준 총 체류 여객", value=f"{total_people:,} 명")
     
-    st.subheader(f"📍 {target_date_str} 혼잡도 도면")
     heatmap = generate_density_heatmap(area_df, current_counts, bg_img.shape)
-    st.image(cv2.cvtColor(cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0), cv2.COLOR_BGR2RGB), use_container_width=True)
+    blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
+    st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
 
 # --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
@@ -79,6 +89,6 @@ with tab1[0]:
     area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
     
     if exists:
-        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD)
+        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, 75)
     else:
-        st.error("해당 날짜의 데이터가 없습니다.")
+        st.error("해당 날짜의 데이터 파일이 없습니다. (파일명을 확인해주세요)")
