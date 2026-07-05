@@ -11,6 +11,18 @@ BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"
 st.set_page_config(page_title="인천공항 T2 3층 데이터 분석 센터", layout="wide")
 
 # --- 공통 함수 ---
+def calculate_staffing(people_count):
+    # 인원당 5명 기준 창구 오픈 권고 (최대 40개)
+    open_counters = min(40, -(-people_count // 5))  # ceil 연산
+    
+    # 현장 지원 인력 (80명 초과 시 투입, 최대 3명)
+    support_staff = 0
+    if people_count > 80:
+        support_staff = min(3, (people_count - 80) // 40 + 1)
+        
+    total_staff = open_counters + support_staff
+    return open_counters, support_staff, total_staff
+    
 def index_to_time_str(t_index):
     total_seconds = int(t_index) * 10
     hours, minutes = total_seconds // 3600, (total_seconds % 3600) // 60
@@ -32,7 +44,7 @@ def load_data_by_date(selected_date_str):
         time_grouped_data[t_index] = {'counts': dict(zip(filtered['area'], filtered['num_people']))}
     return area_df, time_grouped_data, sorted(list(time_grouped_data.keys())), bg_img, True
 
-# [수정됨] 히트맵 생성 로직 복구
+# 히트맵 생성 
 def generate_density_heatmap(area_df, current_counts, img_shape):
     height, width, _ = img_shape
     heatmap_grid = np.zeros((height, width), dtype=np.float32)
