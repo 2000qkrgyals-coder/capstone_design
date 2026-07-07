@@ -162,7 +162,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
     window_size = st.select_slider(
         "분석 구간 선택 (이동평균 분)", 
         options=[1, 3, 5, 10], 
@@ -177,13 +176,21 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
+    df_trend = pd.DataFrame(time_trend_data)
     
-    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
+    # --- [핵심 수정 부분 시작] ---
+    # 1. "시간" 문자열을 datetime 객체로 변환
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'], format='%H:%M:%S')
+    
+    # 2. 시간을 인덱스로 설정
+    df_trend = df_trend.set_index("시간")
+    
+    # 3. 이동평균 계산
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
-    # 차트 출력
+    # 4. 차트 출력: 인덱스가 datetime형이면 Streamlit이 자동으로 시간축 간격을 최적화합니다.
     st.area_chart(df_trend[['이동평균']], color="#3498db")
+    # --- [핵심 수정 부분 끝] ---
     
     # 2. [신규] 구역별 상세 분석 및 피크 탐지
     st.divider()
