@@ -223,31 +223,29 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
     if selected_areas:
-        # 1. 데이터 프레임 생성
+        # 1. 데이터 프레임 생성 루프 수정
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            
-            # [수정] format 인자를 제거하고 pd.to_datetime에 문자열을 바로 전달
-            # 이렇게 하면 Pandas가 자동으로 시간 형식을 파악합니다.
-            time_str = idx_to_label[t]
-            row = {"시간": pd.to_datetime(time_str)} 
+            # pd.to_datetime 대신 문자열 그대로 저장
+            row = {"시간": idx_to_label[t]} 
             
             for a in selected_areas:
                 row[a] = counts.get(a, 0)
             area_trend_data.append(row)
         
-        df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
+        df_area_trend = pd.DataFrame(area_trend_data)
         
         # 2. 이동평균 적용 (window_minutes * 6은 10초 데이터 기준)
         df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
         
-        # 3. Altair용 데이터 변환 (Long Format으로 변환해야 하나의 그래프에 표현 가능)
-        df_plot = df_ma.reset_index().melt('시간', var_name='구역', value_name='인원')
+        # 2. Altair 차트용 데이터 변환 (Long Format)
+        df_plot = df_area_trend.melt('시간', var_name='구역', value_name='인원')
         
-        # 4. Altair 차트 생성
+        # 3. Altair 차트 생성
         import altair as alt
         chart = alt.Chart(df_plot).mark_line().encode(
+            # :T를 붙여서 '시간' 컬럼이 Temporal(시간) 타입임을 알립니다.
             x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour')),
             y=alt.Y('인원:Q', title="체류 인원"),
             color='구역:N'
