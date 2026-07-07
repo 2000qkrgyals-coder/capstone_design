@@ -178,9 +178,11 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    # [핵심] 인덱스를 Datetime으로 변환 후 요약
-    df_trend = pd.DataFrame(time_trend_data)
-    df_trend['시간'] = pd.to_datetime(df_trend['시간'])
+    # 기존: df_trend['시간'] = pd.to_datetime(df_trend['시간'])
+
+    # 수정: 형식 오류가 발생하면 NaN으로 처리하고, 이후 dropna()로 정리합니다.
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'], errors='coerce')
+    df_trend = df_trend.dropna(subset=['시간']) # 형식이 안 맞는 잘못된 데이터는 제거
     df_trend = df_trend.set_index("시간").sort_index()
     
     # 선택한 단위로 리샘플링 (평균값 계산)
