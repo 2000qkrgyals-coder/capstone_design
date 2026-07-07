@@ -74,33 +74,43 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
     
-    # 1. 시간 선택 및 데이터 필터링
+    # 1. 시간 선택
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
     excluded = ["GH", "IM1", "IM2"]
     filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
-    total_people = sum(filtered_counts.values())
     
-    # 2. 상단 요약 카드 (Metric)
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        st.metric("현재 총 체류 여객", f"{total_people:,} 명")
-        
-    # 3. 중요 경고 (혼잡 구역이 있으면 경고 표시)
+    # [KPI 계산]
+    total_people = sum(filtered_counts.values())
     urgent_areas = {k: v for k, v in filtered_counts.items() if v >= 80}
-    if urgent_areas:
-        st.error(f"🚨 주의 필요: {len(urgent_areas)}개 구역에서 혼잡 발생")
-    else:
-        st.success("✅ 전 구역 정상 운영 중")
+    max_area = max(filtered_counts, key=filtered_counts.get) if filtered_counts else "없음"
+    norm_ratio = (1 - (len(urgent_areas) / len(filtered_counts))) * 100 if filtered_counts else 100
+
+    # 2. [개선] 상단 KPI 카드 영역
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("총 체류 여객", f"{total_people:,} 명")
+    col2.metric("혼잡 구역", f"{len(urgent_areas)} 곳", delta="주의" if urgent_areas else None, delta_color="inverse")
+    col3.metric("최대 밀집 구역", max_area)
+    col4.metric("운영 정상도", f"{norm_ratio:.1f}%")
 
     st.divider()
+
+    # 3. [개선] 레이아웃 분할 (좌: 히트맵, 우: Top 5 혼잡 구역 차트)
+    c1, c2 = st.columns([1.5, 1])
     
-    # 4. 히트맵
-    st.subheader("📊 구역별 혼잡도 히트맵")
-    heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
-    blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
-    st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
-    
+    with c1:
+        st.subheader("📊 구역별 혼잡도 히트맵")
+        heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
+        blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
+        st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
+        
+    with c2:
+        st.subheader("🚨 혼잡 Top 5 구역")
+        # 혼잡 순위 정렬
+        sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
+        st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
+
     st.divider()
     
     # 5. 상세 운영 권고 (고급 표 적용)
@@ -109,11 +119,9 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     detailed_data = []
     for area in sorted(filtered_counts.keys()):
         count = filtered_counts.get(area, 0)
-        # 알고리즘 계산
         level = "🔴 매우 혼잡" if count >= 160 else "🟠 혼잡" if count >= 120 else "🟡 주의" if count >= 80 else "🟢 보통"
         open_cnt = 0 if count <= 0 else min(40, -(-int(count) // 5))
         support = 0 if count <= 80 else min(3, (count - 80) // 40 + 1)
-        
         detailed_data.append({"구역": area, "혼잡등급": level, "현재 인원": int(count), "권고 오픈 창구": open_cnt, "현장 지원": support})
     
     # Streamlit 데이터프레임으로 시각적 고급화
