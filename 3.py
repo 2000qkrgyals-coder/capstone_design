@@ -174,6 +174,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
 
     st.area_chart(df_trend[['이동평균']], color="#3498db")
+    st.divider()
     
     # 5. 상세 운영 권고
     
