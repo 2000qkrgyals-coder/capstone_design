@@ -175,3 +175,9 @@ with tab1[0]:
     else:
         st.error("해당 날짜의 데이터 파일이 없습니다.")
 
+st.divider()
+# 데이터 소스 및 메타데이터 영역
+col_footer1, col_footer2 = st.columns(2)
+col_footer1.caption(f"Source: ICN_Airport_T2_Sensor_Logs")
+col_footer2.caption(f"Last Processed: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
