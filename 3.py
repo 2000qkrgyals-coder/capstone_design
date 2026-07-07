@@ -168,27 +168,27 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         "데이터 요약 단위 선택 (분)", 
         options=[1, 5, 10, 30], 
         value=5,
-        help="차트의 X축 간격을 설정합니다. (예: 5분 선택 시 5분 단위 평균치로 표시)"
+        help="차트의 X축 간격을 설정합니다."
     )
     
-    # 데이터 생성
+    # [수정된 부분: 데이터 생성 후 바로 DataFrame화]
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    # 기존: df_trend['시간'] = pd.to_datetime(df_trend['시간'])
-
-    # 수정: 형식 오류가 발생하면 NaN으로 처리하고, 이후 dropna()로 정리합니다.
-    df_trend['시간'] = pd.to_datetime(df_trend['시간'], errors='coerce')
-    df_trend = df_trend.dropna(subset=['시간']) # 형식이 안 맞는 잘못된 데이터는 제거
-    df_trend = df_trend.set_index("시간").sort_index()
+    # df_trend를 여기서 명확하게 생성합니다.
+    df_trend = pd.DataFrame(time_trend_data)
     
-    # 선택한 단위로 리샘플링 (평균값 계산)
+    # 안전하게 날짜/시간 변환 (에러 방지용)
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'], errors='coerce')
+    df_trend = df_trend.dropna(subset=['시간']).set_index("시간").sort_index()
+    
+    # 리샘플링
     df_resampled = df_trend.resample(f'{resample_unit}T').mean()
     
-    # Altair 차트 사용 (X축 깔끔하게 표현)
+    # 차트 출력
     chart = alt.Chart(df_resampled.reset_index()).mark_area(color="#3498db").encode(
         x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
         y=alt.Y('인원:Q', title='평균 인원수')
@@ -209,16 +209,16 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
             counts = past_time_data[t]['counts']
             area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
         
+        # [수정된 부분: 구역 데이터도 마찬가지로 안전하게 처리]
         df_area = pd.DataFrame(area_trend_data)
-        df_area['시간'] = pd.to_datetime(df_area['시간'])
-        df_area = df_area.set_index("시간").sort_index()
+        df_area['시간'] = pd.to_datetime(df_area['시간'], errors='coerce')
+        df_area = df_area.dropna(subset=['시간']).set_index("시간").sort_index()
         
-        # 구역 데이터도 동일한 단위로 리샘플링
+        # 리샘플링
         df_area_resampled = df_area.resample(f'{resample_unit}T').mean()
         
         for area in selected_areas:
             st.write(f"**{area} 구역 인원 추이**")
-            # Altair로 라인 차트 출력
             chart_area = alt.Chart(df_area_resampled.reset_index()).mark_line().encode(
                 x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
                 y=alt.Y(f'{area}:Q', title='인원수')
