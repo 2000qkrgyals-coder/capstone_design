@@ -162,15 +162,13 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
+    # [수정] 이동평균 슬라이더 최대 30분으로 확장
     window_size = st.select_slider(
         "분석 구간 선택 (이동평균 분)", 
-        options=[1, 3, 5, 10], 
-        value=5,
-        help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
+        options=[1, 3, 5, 10, 20, 30], 
+        value=5
     )
     
-    # 데이터 생성
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
@@ -178,45 +176,42 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
     df_trend = pd.DataFrame(time_trend_data).set_index("시간")
-    
-    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
-    # 차트 출력
     st.area_chart(df_trend[['이동평균']], color="#3498db")
     
-    # 2. [신규] 구역별 상세 분석 및 피크 탐지
+    # 2. [신규] 구역별 상세 분석 및 피크 탐지 (시간 단위 리샘플링)
     st.divider()
-    st.subheader("🔍 구역별 상세 인원 분석 (피크 탐지)")
+    st.subheader("🔍 구역별 상세 인원 분석 (시간대별 피크)")
     
     all_areas = sorted([a for a in area_df['area_name'].unique() if a not in ["GH", "IM1", "IM2"]])
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
     if selected_areas:
-        # 데이터 프레임 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
             area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
         
-        df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
+        df_area_trend = pd.DataFrame(area_trend_data)
+        # 시간 컬럼을 실제 시간 객체로 변환하여 X축 정렬
+        df_area_trend['시간'] = pd.to_datetime(df_area_trend['시간'], format='%H:%M:%S')
+        df_area_trend = df_area_trend.set_index('시간')
         
-        # 선택 구역별 차트 및 피크 표시
         for area in selected_areas:
-            # 이동평균(30개 구간 = 5분)
-            ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
+            # 1시간 단위 평균으로 리샘플링 (X축 시간 가독성 극대화)
+            ma_hourly = df_area_trend[area].resample('1H').mean().fillna(0)
             
-            # 피크 감지 (값이 0일 경우 에러 방지용 threshold 설정)
-            threshold = ma.max() * 0.3 if ma.max() > 0 else 1
-            peaks, _ = signal.find_peaks(ma, prominence=threshold, distance=60)
+            # 시간대별 상위 3개 피크 추출 (오전/점심/저녁)
+            top3_peaks = ma_hourly.nlargest(3).sort_index()
             
             # 차트 시각화
-            st.write(f"**{area} 구역 인원 추이**")
-            st.line_chart(ma)
+            st.write(f"**{area} 구역 시간대별 인원 평균**")
+            st.line_chart(ma_hourly)
             
-            if len(peaks) > 0:
-                peak_times = [ma.index[p] for p in peaks]
-                st.caption(f"📍 주요 피크 발생 시간: {', '.join(peak_times)}")
+            # 피크 시간대 출력 (HH:MM)
+            peak_labels = [t.strftime('%H:%M') for t in top3_peaks.index]
+            st.caption(f"📍 주요 피크 예상 시간대: {', '.join(peak_labels)}")
     
     # 5. 상세 운영 권고
     st.divider()
