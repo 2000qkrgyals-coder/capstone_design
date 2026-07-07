@@ -104,6 +104,19 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.divider()
 
+    # 6. [신규] 지능형 운영 제언 패널 (Actionable Insight)
+    st.subheader("💡 지능형 운영 제언")
+    
+    if urgent_areas:
+        # 가장 혼잡한 구역 추출
+        top_urgent = max(urgent_areas, key=urgent_areas.get)
+        msg = f"현재 **{top_urgent}** 구역의 밀집도가 임계치를 초과했습니다. " \
+              f"최대 {urgent_areas[top_urgent]}명의 여객이 체류 중입니다. " \
+              f"즉시 추가 창구 운영 및 현장 안내 요원 배치를 권고합니다."
+        st.warning(msg)
+    else:
+        st.success("현재 모든 구역이 원활하게 운영 중입니다. 추가 조치가 필요하지 않습니다.")
+
     # 3. [개선] 레이아웃 분할 (좌: 히트맵, 우: Top 5 혼잡 구역 차트)
     c1, c2 = st.columns([1.5, 1])
     
@@ -120,7 +133,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
-    st.divider()
 
     # 5. [수정] 사이드바 값을 반영한 이동평균 적용
     st.divider()
