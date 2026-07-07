@@ -189,7 +189,25 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
     # 4. 차트 출력
-    st.area_chart(df_trend[['이동평균']], color="#3498db")
+    import altair as alt
+
+    # 1. 인덱스를 컬럼으로 꺼내기 (Altair는 컬럼 데이터를 선호함)
+    df_plot = df_trend.reset_index()
+
+    # 2. Altair 차트 생성
+    chart = alt.Chart(df_plot).mark_area(
+        color="#3498db", 
+        opacity=0.6
+    ).encode(
+        # X축: '시간' 컬럼 사용, tickCount를 사용하여 1시간 단위 눈금 설정
+        x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount=alt.TimeInterval('hour', 1))),
+        y=alt.Y('이동평균:Q', title="체류 인원")
+    ).properties(
+        height=300
+    )
+
+    # 3. Streamlit에 차트 출력
+    st.altair_chart(chart, use_container_width=True)
     
     # 2. [신규] 구역별 상세 분석 및 피크 탐지
     st.divider()
