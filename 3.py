@@ -163,34 +163,27 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    # 시간 단위 선택 슬라이더 (1분 ~ 30분)
-    resample_unit = st.select_slider(
-        "데이터 요약 단위 선택 (분)", 
-        options=[1, 5, 10, 30], 
-        value=5,
-        help="차트의 X축 간격을 설정합니다."
-    )
+    resample_unit = st.select_slider("데이터 요약 단위 선택 (분)", options=[1, 5, 10, 30], value=5)
     
-    # 데이터 생성
+    # 1. 데이터 생성 (여기서는 문자열 처리를 최소화)
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
-        # idx_to_label[t]가 "14:00" 형태라면 앞에 오늘 날짜를 붙여서 datetime으로 인식시킴
-        time_trend_data.append({"시간": f"2026-07-08 {idx_to_label[t]}", "인원": sum(filtered.values())})
+        time_trend_data.append({"인원": sum(filtered.values())})
     
     df_trend = pd.DataFrame(time_trend_data)
     
-    # 이제 '2026-07-08 14:00' 형태이므로 완벽하게 시계열로 인식됩니다.
-    df_trend['시간'] = pd.to_datetime(df_trend['시간'])
-    df_trend = df_trend.set_index("시간").sort_index()
+    # 2. 날짜 파싱 대신, 시간 인덱스를 수동으로 생성 (에러 방지 끝판왕)
+    # 데이터 개수만큼 순차적인 시간 인덱스를 생성하여 강제 부여
+    df_trend.index = pd.date_range(start="2026-07-08 00:00", periods=len(df_trend), freq="10S")
     
-    # 이제 resample이 정상 작동합니다.
+    # 3. 리샘플링
     df_resampled = df_trend.resample(f'{resample_unit}T').mean()
     
-    # 차트 출력
+    # 4. 출력
     chart = alt.Chart(df_resampled.reset_index()).mark_area(color="#3498db").encode(
-        x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
+        x=alt.X('index:T', axis=alt.Axis(format='%H:%M', title='시간')),
         y=alt.Y('인원:Q', title='평균 인원수')
     ).properties(height=300)
     
@@ -204,23 +197,21 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
     
     if selected_areas:
-        area_trend_data = []
+        area_data_list = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
+            area_data_list.append({a: counts.get(a, 0) for a in selected_areas})
         
-        # [수정된 부분: 구역 데이터도 마찬가지로 안전하게 처리]
-        df_area = pd.DataFrame(area_trend_data)
-        df_area['시간'] = pd.to_datetime(df_area['시간'], errors='coerce')
-        df_area = df_area.dropna(subset=['시간']).set_index("시간").sort_index()
+        df_area = pd.DataFrame(area_data_list)
         
-        # 리샘플링
+        # 동일하게 수동 인덱스 부여
+        df_area.index = pd.date_range(start="2026-07-08 00:00", periods=len(df_area), freq="10S")
         df_area_resampled = df_area.resample(f'{resample_unit}T').mean()
         
         for area in selected_areas:
             st.write(f"**{area} 구역 인원 추이**")
             chart_area = alt.Chart(df_area_resampled.reset_index()).mark_line().encode(
-                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
+                x=alt.X('index:T', axis=alt.Axis(format='%H:%M', title='시간')),
                 y=alt.Y(f'{area}:Q', title='인원수')
             ).properties(height=200)
             st.altair_chart(chart_area, use_container_width=True)
