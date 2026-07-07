@@ -171,21 +171,21 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         help="차트의 X축 간격을 설정합니다."
     )
     
-    # [수정된 부분: 데이터 생성 후 바로 DataFrame화]
+    # 데이터 생성
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
-        time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
+        # idx_to_label[t]가 "14:00" 형태라면 앞에 오늘 날짜를 붙여서 datetime으로 인식시킴
+        time_trend_data.append({"시간": f"2026-07-08 {idx_to_label[t]}", "인원": sum(filtered.values())})
     
-    # df_trend를 여기서 명확하게 생성합니다.
     df_trend = pd.DataFrame(time_trend_data)
     
-    # 안전하게 날짜/시간 변환 (에러 방지용)
-    df_trend['시간'] = pd.to_datetime(df_trend['시간'], errors='coerce')
-    df_trend = df_trend.dropna(subset=['시간']).set_index("시간").sort_index()
+    # 이제 '2026-07-08 14:00' 형태이므로 완벽하게 시계열로 인식됩니다.
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'])
+    df_trend = df_trend.set_index("시간").sort_index()
     
-    # 리샘플링
+    # 이제 resample이 정상 작동합니다.
     df_resampled = df_trend.resample(f'{resample_unit}T').mean()
     
     # 차트 출력
