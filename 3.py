@@ -208,38 +208,49 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.altair_chart(chart, use_container_width=True)
     
-    # 2. [신규] 구역별 상세 분석 및 피크 탐지
+    # 2. [신규] 구역별 상세 인원 분석 (통합 차트)
     st.divider()
-    st.subheader("🔍 구역별 상세 인원 분석 (피크 탐지)")
+    st.subheader("🔍 선택 구역별 상세 인원 비교 분석")
     
+    # 이동평균 슬라이더 범위 확대 (5분 ~ 30분)
+    window_minutes = st.select_slider(
+        "분석 구간 선택 (이동평균 분)",
+        options=list(range(5, 31, 5)), # 5, 10, 15, 20, 25, 30
+        value=5
+    )
+
     all_areas = sorted([a for a in area_df['area_name'].unique() if a not in ["GH", "IM1", "IM2"]])
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
     if selected_areas:
-        # 데이터 프레임 생성
+        # 1. 데이터 프레임 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
+            row = {"시간": pd.to_datetime(idx_to_label[t], format='%H:%M:%S')}
+            for a in selected_areas:
+                row[a] = counts.get(a, 0)
+            area_trend_data.append(row)
         
         df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
         
-        # 선택 구역별 차트 및 피크 표시
-        for area in selected_areas:
-            # 이동평균(30개 구간 = 5분)
-            ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
-            
-            # 피크 감지 (값이 0일 경우 에러 방지용 threshold 설정)
-            threshold = ma.max() * 0.3 if ma.max() > 0 else 1
-            peaks, _ = signal.find_peaks(ma, prominence=threshold, distance=60)
-            
-            # 차트 시각화
-            st.write(f"**{area} 구역 인원 추이**")
-            st.line_chart(ma)
-            
-            if len(peaks) > 0:
-                peak_times = [ma.index[p] for p in peaks]
-                st.caption(f"📍 주요 피크 발생 시간: {', '.join(peak_times)}")
+        # 2. 이동평균 적용 (window_minutes * 6은 10초 데이터 기준)
+        df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
+        
+        # 3. Altair용 데이터 변환 (Long Format으로 변환해야 하나의 그래프에 표현 가능)
+        df_plot = df_ma.reset_index().melt('시간', var_name='구역', value_name='인원')
+        
+        # 4. Altair 차트 생성
+        import altair as alt
+        chart = alt.Chart(df_plot).mark_line().encode(
+            x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour')),
+            y=alt.Y('인원:Q', title="체류 인원"),
+            color='구역:N'
+        ).properties(
+            height=400
+        )
+        
+        st.altair_chart(chart, use_container_width=True)
     
     # 5. 상세 운영 권고
     st.divider()
