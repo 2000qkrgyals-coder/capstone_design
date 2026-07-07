@@ -227,7 +227,12 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            row = {"시간": pd.to_datetime(idx_to_label[t], format='%H:%M:%S')}
+            
+            # [수정] format 인자를 제거하고 pd.to_datetime에 문자열을 바로 전달
+            # 이렇게 하면 Pandas가 자동으로 시간 형식을 파악합니다.
+            time_str = idx_to_label[t]
+            row = {"시간": pd.to_datetime(time_str)} 
+            
             for a in selected_areas:
                 row[a] = counts.get(a, 0)
             area_trend_data.append(row)
