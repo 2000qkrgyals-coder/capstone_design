@@ -161,18 +161,8 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
    # 5. [전체 인원 흐름 차트]
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
-
-    # 1. 인덱스가 문자열인지 확인
-    print(df_trend.index.dtype) 
     
-    # 2. 강제로 시간 타입으로 변환 및 설정
-    df_trend.index = pd.to_datetime(df_trend.index)
-    
-    # 3. 다시 확인
-    print(df_trend.info())
-
-
-    
+    # [수정] 이동평균 윈도우 슬라이더
     window_size = st.select_slider(
         "분석 구간 선택 (이동평균 분)", 
         options=[1, 3, 5, 10], 
@@ -180,19 +170,25 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
     )
     
-    # 데이터 생성
+    # --- 데이터 생성 로직 ---
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
+    # 1. df_trend 생성 및 가공 (함수 내부에서 확실하게 정의)
+    df_trend = pd.DataFrame(time_trend_data)
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'], format='%H:%M:%S', errors='coerce')
+    df_trend = df_trend.set_index("시간").sort_index()
     
-    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
+    # 2. 인덱스 확인을 위한 디버깅 코드 위치 이동 (정의된 후 호출)
+    st.write("인덱스 타입 확인:", df_trend.index.dtype) 
+    
+    # 3. 이동평균 계산
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
-    # 차트 출력
+    # 4. 차트 출력
     st.area_chart(df_trend[['이동평균']], color="#3498db")
     
     # 2. [신규] 구역별 상세 분석 및 피크 탐지
