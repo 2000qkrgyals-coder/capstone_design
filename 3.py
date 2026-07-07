@@ -157,8 +157,23 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
+    # 5. [전체 인원 흐름 차트]
+    st.divider()
+    st.subheader(f"📈 전체 여객 인원 흐름 ({window_size}분 이동평균)")
+    
+    time_trend_data = []
+    for t in sorted(past_time_data.keys()):
+        counts = past_time_data[t]['counts']
+        filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
+        time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
+    
+    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
+    
+    # 2. 이동평균 계산 (window_size 변수가 위에서 정의되어 있어야 함)
+    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
 
-    # 1. 전체 인원 흐름 (기존 기능 유지)
+    # 3. 차트 출력
+    st.area_chart(df_trend[['이동평균']], color="#3498db")
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름")
     window_size = st.select_slider("분석 구간 선택 (이동평균 분)", options=[1, 3, 5, 10], value=5)
