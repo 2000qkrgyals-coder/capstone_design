@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import streamlit as st
+import scipy.signal as signal
 
 # --- [설정] 기본 경로 설정 ---
 AREA_FILE_PATH = "terminal_areas_grouped_2.csv"        
