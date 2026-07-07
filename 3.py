@@ -2,6 +2,7 @@ import datetime
 import cv2
 import numpy as np
 import pandas as pd
+import altair as alt
 import streamlit as st
 import scipy.signal as signal
 
@@ -158,15 +159,16 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
-   # 5. [전체 인원 흐름 차트]
+    # 5. [전체 인원 흐름 차트]
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    window_size = st.select_slider(
-        "분석 구간 선택 (이동평균 분)", 
-        options=[1, 3, 5, 10], 
+    # 시간 단위 선택 슬라이더 (1분 ~ 30분)
+    resample_unit = st.select_slider(
+        "데이터 요약 단위 선택 (분)", 
+        options=[1, 5, 10, 30], 
         value=5,
-        help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
+        help="차트의 X축 간격을 설정합니다. (예: 5분 선택 시 5분 단위 평균치로 표시)"
     )
     
     # 데이터 생성
@@ -176,14 +178,21 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    # 시간순 정렬 및 인덱스 설정
-    df_trend = pd.DataFrame(time_trend_data).sort_values("시간").set_index("시간")
+    # [핵심] 인덱스를 Datetime으로 변환 후 요약
+    df_trend = pd.DataFrame(time_trend_data)
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'])
+    df_trend = df_trend.set_index("시간").sort_index()
     
-    # 이동평균 계산
-    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
+    # 선택한 단위로 리샘플링 (평균값 계산)
+    df_resampled = df_trend.resample(f'{resample_unit}T').mean()
     
-    # 차트 출력
-    st.area_chart(df_trend[['이동평균']], color="#3498db")
+    # Altair 차트 사용 (X축 깔끔하게 표현)
+    chart = alt.Chart(df_resampled.reset_index()).mark_area(color="#3498db").encode(
+        x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
+        y=alt.Y('인원:Q', title='평균 인원수')
+    ).properties(height=300)
+    
+    st.altair_chart(chart, use_container_width=True)
     
     # 2. [신규] 구역별 상세 분석
     st.divider()
@@ -193,23 +202,26 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
     
     if selected_areas:
-        # 데이터 프레임 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
             area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
         
-        # 시간순 정렬 및 인덱스 설정
-        df_area_trend = pd.DataFrame(area_trend_data).sort_values("시간").set_index("시간")
+        df_area = pd.DataFrame(area_trend_data)
+        df_area['시간'] = pd.to_datetime(df_area['시간'])
+        df_area = df_area.set_index("시간").sort_index()
         
-        # 선택 구역별 차트 출력
+        # 구역 데이터도 동일한 단위로 리샘플링
+        df_area_resampled = df_area.resample(f'{resample_unit}T').mean()
+        
         for area in selected_areas:
-            # 이동평균(30개 구간 = 5분)
-            ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
-            
-            # 차트 시각화
             st.write(f"**{area} 구역 인원 추이**")
-            st.line_chart(ma)
+            # Altair로 라인 차트 출력
+            chart_area = alt.Chart(df_area_resampled.reset_index()).mark_line().encode(
+                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
+                y=alt.Y(f'{area}:Q', title='인원수')
+            ).properties(height=200)
+            st.altair_chart(chart_area, use_container_width=True)
     
     # 5. 상세 운영 권고
     st.divider()
