@@ -17,21 +17,17 @@ st.set_page_config(
 # Dark Mode & Command Center Style
 st.markdown("""
     <style>
-    /* 표 헤더를 어두운 색으로 */
-    thead tr th {
-        background-color: #1a1a1a !important;
-        color: #00ffcc !important;
-        border-bottom: 2px solid #00ffcc !important;
-    }
-    /* 표 내용 배경과 글자색 */
-    tbody tr td {
+    /* 전체 배경을 강제로 어둡게 고정 */
+    [data-testid="stAppViewContainer"] {
         background-color: #050505 !important;
-        color: #ffffff !important;
-        border-bottom: 1px solid #333 !important;
     }
-    /* 표 전체 테두리 */
-    .stDataFrame {
-        border: 1px solid #444 !important;
+    /* 사이드바 배경도 어둡게 */
+    [data-testid="stSidebar"] {
+        background-color: #111111 !important;
+    }
+    /* 모든 텍스트를 흰색으로 */
+    h1, h2, h3, p, div, label, span {
+        color: #ffffff !important;
     }
     </style>
     """, unsafe_allow_html=True)
