@@ -163,8 +163,20 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         detailed_data.append({"구역": area, "혼잡등급": level, "현재 인원": int(count), "권고 오픈 창구": open_cnt, "현장 지원": support})
     
     # Streamlit 데이터프레임으로 시각적 고급화
+    def color_congestion(row):
+        color = ''
+        if "매우 혼잡" in row['혼잡등급']: color = 'background-color: #ffcccc' # 연한 빨강
+        elif "혼잡" in row['혼잡등급']: color = 'background-color: #ffe6cc'     # 연한 주황
+        elif "주의" in row['혼잡등급']: color = 'background-color: #ffffcc'     # 연한 노랑
+        return [color] * len(row)
+    
+    # 표 시각화 부분
+    st.subheader("📍 구역별 운영 권고 상세")
+    df_display = pd.DataFrame(detailed_data)
+    
+    # 스타일 적용
     st.dataframe(
-        pd.DataFrame(detailed_data),
+        df_display.style.apply(color_congestion, axis=1),
         use_container_width=True,
         column_config={
             "권고 오픈 창구": st.column_config.ProgressColumn("권고 오픈 창구", format="%d 개", min_value=0, max_value=40),
