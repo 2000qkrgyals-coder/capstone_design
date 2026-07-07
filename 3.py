@@ -223,18 +223,25 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
     if selected_areas:
-        # 1. 데이터 프레임 생성 루프 수정
+        # 1. 데이터 프레임 생성 로직 수정
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            # pd.to_datetime 대신 문자열 그대로 저장
+            # '시간'은 인덱스로 쓸 것이니 여기서만 사용
             row = {"시간": idx_to_label[t]} 
             
             for a in selected_areas:
-                row[a] = counts.get(a, 0)
+                # 숫자형으로 변환하여 저장
+                row[a] = float(counts.get(a, 0)) 
             area_trend_data.append(row)
         
-        df_area_trend = pd.DataFrame(area_trend_data)
+        df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
+
+        # [중요] 모든 컬럼을 확실하게 숫자형으로 강제 변환
+        df_area_trend = df_area_trend.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+        # 2. 이동평균 적용
+        df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
         
         # 2. 이동평균 적용 (window_minutes * 6은 10초 데이터 기준)
         df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
