@@ -142,32 +142,49 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
     st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
     
-    # 5. 상세 운영 권고 (Styling)
+    # 5. 상세 운영 권고 (방어 코드 포함)
     st.subheader("📍 REAL-TIME OPERATION RECOMMENDATIONS")
     
-    # 데이터를 처리하여 출력
-    df_display = pd.DataFrame(detailed_data)
+    # 1. 리스트 초기화 (이 부분이 필수입니다)
+    detailed_data = [] 
     
-    # 표 출력: 특정 등급에 따라 글자색이 바뀌도록 설정
-    st.dataframe(
-        df_display.style.map(
-            lambda x: "color: #ff4d4d; font-weight: bold;" if x == "🔴 CRITICAL" else
-                      "color: #ff9900; font-weight: bold;" if x == "🟠 CONGESTED" else
-                      "color: #ffff00; font-weight: bold;" if x == "🟡 CAUTION" else
-                      "color: #00ffcc; font-weight: bold;" if x == "🟢 NORMAL" else "",
-            subset=["Status"]
-        ),
-        use_container_width=True,
-        column_config={
-            "Recommended Counters": st.column_config.ProgressColumn(
-                "COUNTERS", format="%d", min_value=0, max_value=40
+    # 2. 데이터가 있는지 확인
+    if filtered_counts:
+        for area in sorted(filtered_counts.keys()):
+            count = filtered_counts.get(area, 0)
+            level = "🔴 CRITICAL" if count >= 160 else "🟠 CONGESTED" if count >= 120 else "🟡 CAUTION" if count >= 80 else "🟢 NORMAL"
+            open_cnt = 0 if count <= 0 else min(40, -(-int(count) // 5))
+            support = 0 if count <= 80 else min(3, (count - 80) // 40 + 1)
+            
+            detailed_data.append({
+                "Zone": area, 
+                "Status": level, 
+                "Current Pax": int(count), 
+                "Recommended Counters": open_cnt, 
+                "Support Staff": support
+            })
+    
+    # 3. 데이터가 있을 때만 DataFrame 생성
+    if detailed_data:
+        df_display = pd.DataFrame(detailed_data)
+        
+        st.dataframe(
+            df_display.style.map(
+                lambda x: "color: #ff4d4d; font-weight: bold;" if x == "🔴 CRITICAL" else
+                          "color: #ff9900; font-weight: bold;" if x == "🟠 CONGESTED" else
+                          "color: #ffff00; font-weight: bold;" if x == "🟡 CAUTION" else
+                          "color: #00ffcc; font-weight: bold;" if x == "🟢 NORMAL" else "",
+                subset=["Status"]
             ),
-            "Support Staff": st.column_config.ProgressColumn(
-                "STAFF", format="%d", min_value=0, max_value=3
-            )
-        },
-        hide_index=True
-    )
+            use_container_width=True,
+            column_config={
+                "Recommended Counters": st.column_config.ProgressColumn("COUNTERS", format="%d", min_value=0, max_value=40),
+                "Support Staff": st.column_config.ProgressColumn("STAFF", format="%d", min_value=0, max_value=3)
+            },
+            hide_index=True
+        )
+    else:
+        st.info("No data available for the selected time.")
 
 # --- Main Execution ---
 st.title("✈️ ICN T2 OPERATIONS COMMAND CENTER")
