@@ -2,7 +2,6 @@ import datetime
 import cv2
 import numpy as np
 import pandas as pd
-import altair as alt
 import streamlit as st
 import scipy.signal as signal
 
@@ -159,62 +158,65 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
-    # 5. [전체 인원 흐름 차트]
+   # 5. [전체 인원 흐름 차트]
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    resample_unit = st.select_slider("데이터 요약 단위 선택 (분)", options=[1, 5, 10, 30], value=5)
+    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
+    window_size = st.select_slider(
+        "분석 구간 선택 (이동평균 분)", 
+        options=[1, 3, 5, 10], 
+        value=5,
+        help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
+    )
     
-    # 1. 데이터 생성 (여기서는 문자열 처리를 최소화)
+    # 데이터 생성
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
-        time_trend_data.append({"인원": sum(filtered.values())})
+        time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    df_trend = pd.DataFrame(time_trend_data)
+    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
     
-    # 2. 날짜 파싱 대신, 시간 인덱스를 수동으로 생성 (에러 방지 끝판왕)
-    # 데이터 개수만큼 순차적인 시간 인덱스를 생성하여 강제 부여
-    df_trend.index = pd.date_range(start="2026-07-08 00:00", periods=len(df_trend), freq="10S")
+    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
+    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
-    # 3. 리샘플링
-    df_resampled = df_trend.resample(f'{resample_unit}T').mean()
+    # 차트 출력
+    st.area_chart(df_trend[['이동평균']], color="#3498db")
     
-    # 4. 출력
-    chart = alt.Chart(df_resampled.reset_index()).mark_area(color="#3498db").encode(
-        x=alt.X('index:T', axis=alt.Axis(format='%H:%M', title='시간')),
-        y=alt.Y('인원:Q', title='평균 인원수')
-    ).properties(height=300)
-    
-    st.altair_chart(chart, use_container_width=True)
-    
-    # 2. [신규] 구역별 상세 분석
+    # 2. [신규] 구역별 상세 분석 및 피크 탐지
     st.divider()
-    st.subheader("🔍 구역별 상세 인원 분석")
+    st.subheader("🔍 구역별 상세 인원 분석 (피크 탐지)")
     
     all_areas = sorted([a for a in area_df['area_name'].unique() if a not in ["GH", "IM1", "IM2"]])
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
-    
+
     if selected_areas:
-        area_data_list = []
+        # 데이터 프레임 생성
+        area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
-            area_data_list.append({a: counts.get(a, 0) for a in selected_areas})
+            area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
         
-        df_area = pd.DataFrame(area_data_list)
+        df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
         
-        # 동일하게 수동 인덱스 부여
-        df_area.index = pd.date_range(start="2026-07-08 00:00", periods=len(df_area), freq="10S")
-        df_area_resampled = df_area.resample(f'{resample_unit}T').mean()
-        
+        # 선택 구역별 차트 및 피크 표시
         for area in selected_areas:
+            # 이동평균(30개 구간 = 5분)
+            ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
+            
+            # 피크 감지 (값이 0일 경우 에러 방지용 threshold 설정)
+            threshold = ma.max() * 0.3 if ma.max() > 0 else 1
+            peaks, _ = signal.find_peaks(ma, prominence=threshold, distance=60)
+            
+            # 차트 시각화
             st.write(f"**{area} 구역 인원 추이**")
-            chart_area = alt.Chart(df_area_resampled.reset_index()).mark_line().encode(
-                x=alt.X('index:T', axis=alt.Axis(format='%H:%M', title='시간')),
-                y=alt.Y(f'{area}:Q', title='인원수')
-            ).properties(height=200)
-            st.altair_chart(chart_area, use_container_width=True)
+            st.line_chart(ma)
+            
+            if len(peaks) > 0:
+                peak_times = [ma.index[p] for p in peaks]
+                st.caption(f"📍 주요 피크 발생 시간: {', '.join(peak_times)}")
     
     # 5. 상세 운영 권고
     st.divider()
