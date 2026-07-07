@@ -199,14 +199,13 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         color="#3498db", 
         opacity=0.6
     ).encode(
-        # X축: '시간' 컬럼 사용, tickCount를 사용하여 1시간 단위 눈금 설정
-        x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount=alt.TimeInterval('hour', 1))),
+        # 'hour'를 직접 문자열로 전달하거나, 정수를 사용하여 눈금 개수를 대략적으로 조절합니다.
+        x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour')), 
         y=alt.Y('이동평균:Q', title="체류 인원")
     ).properties(
         height=300
     )
 
-    # 3. Streamlit에 차트 출력
     st.altair_chart(chart, use_container_width=True)
     
     # 2. [신규] 구역별 상세 분석 및 피크 탐지
