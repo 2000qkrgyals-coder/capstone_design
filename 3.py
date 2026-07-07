@@ -112,6 +112,28 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
     st.divider()
+
+    # 5. [수정] 이동평균을 적용한 시간대별 전체 인원 추이 차트
+    st.divider()
+    st.subheader("📈 전체 여객 인원 흐름 (이동평균 분석)")
+    
+    # 데이터 프레임 생성
+    time_trend_data = []
+    for t in sorted(past_time_data.keys()):
+        counts = past_time_data[t]['counts']
+        filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
+        time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
+    
+    df_trend = pd.DataFrame(time_trend_data)
+    df_trend = df_trend.set_index("시간")
+
+    # 이동평균 적용 (1분=6개 데이터, 5분=30개 데이터)
+    # window 값을 6(1분) 또는 30(5분)으로 조절하세요
+    window_size = 6 
+    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size).mean()
+
+    # 차트 시각화
+    st.area_chart(df_trend[['이동평균']], color="#3498db")
     
     # 5. 상세 운영 권고 (고급 표 적용)
     st.subheader("📍 구역별 운영 권고 상세")
@@ -134,21 +156,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         },
         hide_index=True
     )
-    # 5. [신규 추가] 시간대별 전체 인원 추이 차트
-    st.divider()
-    st.subheader("📈 전체 여객 인원 흐름 (시간대별)")
-    
-    # 시간대별 총 인원 데이터 구성
-    time_trend_data = []
-    for t in sorted(past_time_data.keys()):
-        counts = past_time_data[t]['counts']
-        filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
-        time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
-    
-    df_trend = pd.DataFrame(time_trend_data)
-    
-    # 영역 차트로 표시하면 흐름이 더 전문적으로 보입니다.
-    st.area_chart(df_trend.set_index("시간"), color="#3498db")
 
 # --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
