@@ -85,26 +85,34 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
         return cv2.bitwise_and(heatmap_color, heatmap_color, mask=alpha)
     return np.zeros((height, width, 3), dtype=np.uint8)
 
-@st.fragment
+
 @st.fragment
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
     
+    # 1. 시간 선택 및 데이터 필터링
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
-    
-    # 1. 제외 구역 필터링
     excluded = ["GH", "IM1", "IM2"]
     filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
     total_people = sum(filtered_counts.values())
     
-    # 2. 상단: 총 체류 여객만 표시
-    st.metric("현재 총 체류 여객", f"{total_people:,} 명")
-    
+    # 2. 상단 요약 카드 (Metric)
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.metric("현재 총 체류 여객", f"{total_people:,} 명")
+        
+    # 3. 중요 경고 (혼잡 구역이 있으면 경고 표시)
+    urgent_areas = {k: v for k, v in filtered_counts.items() if v >= 80}
+    if urgent_areas:
+        st.error(f"🚨 주의 필요: {len(urgent_areas)}개 구역에서 혼잡 발생")
+    else:
+        st.success("✅ 전 구역 정상 운영 중")
+
     st.divider()
     
-    # 3. 히트맵
+    # 4. 히트맵
     st.subheader("📊 구역별 혼잡도 히트맵")
     heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
@@ -112,38 +120,29 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     st.divider()
     
-    # 4. 하단: 구역별 상세 운영 권고 (0개 포함)
+    # 5. 상세 운영 권고 (고급 표 적용)
     st.subheader("📍 구역별 운영 권고 상세")
     
     detailed_data = []
     for area in sorted(filtered_counts.keys()):
         count = filtered_counts.get(area, 0)
-        # 1. 혼잡 등급 판정
-        if count >= 160: level = "🔴 매우 혼잡"
-        elif count >= 120: level = "🟠 혼잡"
-        elif count >= 80: level = "🟡 주의"
-        else: level = "🟢 보통"
+        # 알고리즘 계산
+        level = "🔴 매우 혼잡" if count >= 160 else "🟠 혼잡" if count >= 120 else "🟡 주의" if count >= 80 else "🟢 보통"
+        open_cnt = 0 if count <= 0 else min(40, -(-int(count) // 5))
+        support = 0 if count <= 80 else min(3, (count - 80) // 40 + 1)
         
-        # 2. 권고 오픈 창구 (5명당 1개, 최대 40개)
-        open_counters = 0 if count <= 0 else min(40, -(-int(count) // 5))
-        
-        # 3. 현장 지원 인력 (80명 초과 시, 최대 3명)
-        support_staff = 0
-        if count > 80:
-            support_staff = min(3, (count - 80) // 40 + 1)
-        
-        # 데이터를 표에 넣기 좋게 구성
-        detailed_data.append({
-            "구역": area,
-            "혼잡등급": level,
-            "현재 인원": f"{int(count)} 명",
-            "권고 오픈 창구": f"{open_counters} 개",
-            "현장 지원 인력": f"{support_staff} 명"
-        })
+        detailed_data.append({"구역": area, "혼잡등급": level, "현재 인원": int(count), "권고 오픈 창구": open_cnt, "현장 지원": support})
     
-    # 표 출력
-    if detailed_data:
-        st.table(pd.DataFrame(detailed_data))
+    # Streamlit 데이터프레임으로 시각적 고급화
+    st.dataframe(
+        pd.DataFrame(detailed_data),
+        use_container_width=True,
+        column_config={
+            "권고 오픈 창구": st.column_config.ProgressColumn("권고 오픈 창구", format="%d 개", min_value=0, max_value=40),
+            "현장 지원": st.column_config.ProgressColumn("현장 지원", format="%d 명", min_value=0, max_value=3)
+        },
+        hide_index=True
+    )
 
 # --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
