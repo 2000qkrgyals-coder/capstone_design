@@ -151,16 +151,18 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         hide_index=True
     )
 
-# --- 메인 실행부 ---
-st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
-tab1 = st.tabs(["📊 과거 데이터 이력 분석"])
+st.set_page_config(
+    page_title="ICN T2 Operations Center",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-with tab1[0]:
-    selected_date = st.date_input("📅 조회할 날짜 선택", value=datetime.date(2025, 10, 4))
-    target_date_str = selected_date.strftime("%Y-%m-%d")
-    area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
-    
-    if exists:
-        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, 75)
-    else:
-        st.error("해당 날짜의 데이터 파일이 없습니다.")
+# Dark Mode & Command Center Style
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: #e0e0e0; }
+    h1, h2, h3 { color: #00ffcc !important; font-family: 'Courier New', monospace; letter-spacing: 2px; }
+    .stMetricValue { color: #ffffff !important; font-family: monospace; }
+    .stAlert { background-color: #1a1a1a !important; border: 1px solid #333; }
+    </style>
+    """, unsafe_allow_html=True)
