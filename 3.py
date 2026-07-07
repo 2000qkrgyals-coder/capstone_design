@@ -160,7 +160,12 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     # 5. [수정] 사이드바 값을 반영한 이동평균 적용
     st.divider()
-    st.subheader(f"📈 전체 여객 인원 흐름 ({window_size}분 이동평균)")
+    st.subheader("📈 전체 여객 인원 흐름")
+    window_size = st.select_slider(
+        "분석 구간 선택 (이동평균 윈도우 크기 - 분)",
+        options=[1, 3, 5, 10], value=5,
+        help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
+    )
     
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
@@ -210,22 +215,22 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     )
 
 # --- 메인 실행부 ---
-st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
-tab1 = st.tabs(["📊 과거 데이터 이력 분석"])
+st.sidebar.title("🏢 대시보드 메뉴")
+menu = st.sidebar.radio("모드 선택", ["📊 과거 데이터 분석", "📡 실시간 모니터링"])
 
-with tab1[0]:
+if menu == "📊 과거 데이터 분석":
+    st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
     selected_date = st.date_input("📅 조회할 날짜 선택", value=datetime.date(2025, 10, 4))
     target_date_str = selected_date.strftime("%Y-%m-%d")
     area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
     
     if exists:
+        # 슬라이더를 사이드바에서 본문으로 옮겼으므로 THRESHOLD 인자만 남김
         render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, 75)
     else:
         st.error("해당 날짜의 데이터 파일이 없습니다.")
 
-st.divider()
-# 데이터 소스 및 메타데이터 영역
-col_footer1, col_footer2 = st.columns(2)
-col_footer1.caption(f"Source: ICN_Airport_T2_Sensor_Logs")
-col_footer2.caption(f"Last Processed: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+elif menu == "📡 실시간 모니터링":
+    st.title("📡 실시간 모니터링 센터")
+    st.info("실시간 데이터 파이프라인 연동 대기 중...")
 
