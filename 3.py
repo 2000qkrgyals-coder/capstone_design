@@ -151,8 +151,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.area_chart(df_trend[['이동평균']], color="#3498db")
     
-    # 5. 상세 운영 권고 (고급 표 적용)
-    st.subheader("📍 구역별 운영 권고 상세")
+    # 5. 상세 운영 권고
     
     detailed_data = []
     for area in sorted(filtered_counts.keys()):
