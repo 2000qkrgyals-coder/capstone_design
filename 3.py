@@ -161,8 +161,18 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
    # 5. [전체 인원 흐름 차트]
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
+
+    # 1. 인덱스가 문자열인지 확인
+    print(df_trend.index.dtype) 
     
-    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
+    # 2. 강제로 시간 타입으로 변환 및 설정
+    df_trend.index = pd.to_datetime(df_trend.index)
+    
+    # 3. 다시 확인
+    print(df_trend.info())
+
+
+    
     window_size = st.select_slider(
         "분석 구간 선택 (이동평균 분)", 
         options=[1, 3, 5, 10], 
