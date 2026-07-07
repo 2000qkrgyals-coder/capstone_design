@@ -184,8 +184,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
 # --- Main Execution ---
 st.title("✈️ ICN T2 OPERATIONS COMMAND CENTER")
-st.subheader("SELECT OPERATIONS DATE")
-selected_date = st.date_input("", value=datetime.date(2025, 10, 4), label_visibility="collapsed")
 
 # ... 이후 로직 진행 ...
 tab1 = st.tabs(["📊 HISTORICAL DATA ANALYSIS"])
