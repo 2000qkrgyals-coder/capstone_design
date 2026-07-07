@@ -17,29 +17,22 @@ st.set_page_config(
 # Dark Mode & Command Center Style
 st.markdown("""
     <style>
-    /* 전체 배경을 더 어둡게 */
-    .stApp { background-color: #050505; color: #ffffff; }
-    
-    /* 모든 텍스트를 선명한 흰색으로 강제 변경 */
-    p, div, span, label, h1, h2, h3, h4, h5, h6 { 
-        color: #ffffff !important; 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; 
+    /* 표 헤더를 어두운 색으로 */
+    thead tr th {
+        background-color: #1a1a1a !important;
+        color: #00ffcc !important;
+        border-bottom: 2px solid #00ffcc !important;
     }
-    
-    /* 입력창 및 선택창 테두리 강조 */
-    .stSelectbox, .stDateInput, .stSlider { 
-        border: 1px solid #444 !important; 
+    /* 표 내용 배경과 글자색 */
+    tbody tr td {
+        background-color: #050505 !important;
+        color: #ffffff !important;
+        border-bottom: 1px solid #333 !important;
     }
-    
-    /* 표(DataFrame) 스타일 강조 */
-    [data-testid="stDataFrame"] {
-        background-color: #111 !important;
-        border: 1px solid #333 !important;
+    /* 표 전체 테두리 */
+    .stDataFrame {
+        border: 1px solid #444 !important;
     }
-    
-    /* 주요 메트릭 값의 색상 강조 */
-    div[data-testid="stMetricValue"] { color: #00ffcc !important; font-size: 2.5rem !important; }
-    div[data-testid="stMetricLabel"] { color: #aaaaaa !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -149,24 +142,29 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
     st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
     
-    st.subheader("📍 Real-time Operation Recommendations")
+    # 5. 상세 운영 권고 (Styling)
+    st.subheader("📍 REAL-TIME OPERATION RECOMMENDATIONS")
     
-    detailed_data = []
-    for area in sorted(filtered_counts.keys()):
-        count = filtered_counts.get(area, 0)
-        # Algorithm Logic
-        level = "🔴 CRITICAL" if count >= 160 else "🟠 CONGESTED" if count >= 120 else "🟡 CAUTION" if count >= 80 else "🟢 NORMAL"
-        open_cnt = 0 if count <= 0 else min(40, -(-int(count) // 5))
-        support = 0 if count <= 80 else min(3, (count - 80) // 40 + 1)
-        
-        detailed_data.append({"Zone": area, "Status": level, "Current Pax": int(count), "Recommended Counters": open_cnt, "Support Staff": support})
+    # 데이터를 처리하여 출력
+    df_display = pd.DataFrame(detailed_data)
     
+    # 표 출력: 특정 등급에 따라 글자색이 바뀌도록 설정
     st.dataframe(
-        pd.DataFrame(detailed_data),
+        df_display.style.map(
+            lambda x: "color: #ff4d4d; font-weight: bold;" if x == "🔴 CRITICAL" else
+                      "color: #ff9900; font-weight: bold;" if x == "🟠 CONGESTED" else
+                      "color: #ffff00; font-weight: bold;" if x == "🟡 CAUTION" else
+                      "color: #00ffcc; font-weight: bold;" if x == "🟢 NORMAL" else "",
+            subset=["Status"]
+        ),
         use_container_width=True,
         column_config={
-            "Recommended Counters": st.column_config.ProgressColumn("Counters", format="%d", min_value=0, max_value=40),
-            "Support Staff": st.column_config.ProgressColumn("Staff", format="%d", min_value=0, max_value=3)
+            "Recommended Counters": st.column_config.ProgressColumn(
+                "COUNTERS", format="%d", min_value=0, max_value=40
+            ),
+            "Support Staff": st.column_config.ProgressColumn(
+                "STAFF", format="%d", min_value=0, max_value=3
+            )
         },
         hide_index=True
     )
