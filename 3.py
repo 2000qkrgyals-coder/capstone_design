@@ -102,25 +102,54 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     st.divider()
 
-    # 4. 구역별 상세 운영 가이드 (0개 표시 로직)
+    # 4. 하단: 구역별 상세 운영 권고
     st.subheader("📍 구역별 운영 권고 상세")
     
     detailed_data = []
-    # 모든 주요 구역을 순회하며 데이터 생성
     for area in sorted(filtered_counts.keys()):
         count = filtered_counts.get(area, 0)
-        # 0명인 경우 0개로 표시되도록 계산 로직 처리
-        area_open = 0 if count == 0 else calculate_staffing(count)[0]
         
+        # --- [수정된 부분: 알고리즘 적용] ---
+        # 1. 혼잡 등급 판정
+        if count >= 160: level = "🔴 매우 혼잡"
+        elif count >= 120: level = "🟠 혼잡"
+        elif count >= 80: level = "🟡 주의"
+        else: level = "🟢 보통"
+        
+        # 2. 권고 오픈 창구 (5명당 1개, 최대 40개)
+        open_counters = 0 if count <= 0 else min(40, -(-int(count) // 5))
+        
+        # 3. 현장 지원 인력 (80명 초과 시, 최대 3명)
+        support_staff = 0
+        if count > 80:
+            support_staff = min(3, (count - 80) // 40 + 1)
+        
+        # 데이터를 표에 넣기 좋게 구성
         detailed_data.append({
             "구역": area,
+            "혼잡등급": level,
             "현재 인원": f"{int(count)} 명",
-            "권고 오픈 창구": f"{area_open} 개"
+            "권고 오픈 창구": f"{open_counters} 개",
+            "현장 지원 인력": f"{support_staff} 명"
         })
     
-    if detailed_data:
-        st.table(pd.DataFrame(detailed_data))
-
+        df_display = pd.DataFrame(detailed_data)
+        
+        st.dataframe(
+            df_display,
+            use_container_width=True,
+            column_config={
+                "혼잡등급": st.column_config.TextColumn("혼잡등급", help="실제 인원수 기준 등급"),
+                "권고 오픈 창구": st.column_config.ProgressColumn(
+                    "권고 오픈 창구",
+                    help="최대 40개 기준",
+                    format="%d 개",
+                    min_value=0,
+                    max_value=40,
+                ),
+            },
+            hide_index=True,
+        )
 # --- 메인 실행부 ---
 st.title("✈️ 인천국제공항 T2 3층 데이터 분석 시스템")
 tab1 = st.tabs(["📊 과거 데이터 이력 분석"])
