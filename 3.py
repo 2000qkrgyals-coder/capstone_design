@@ -17,10 +17,29 @@ st.set_page_config(
 # Dark Mode & Command Center Style
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
-    h1, h2, h3 { color: #00ffcc !important; font-family: 'Courier New', monospace; letter-spacing: 2px; }
-    .stMetricValue { color: #ffffff !important; font-family: monospace; }
-    .stAlert { background-color: #1a1a1a !important; border: 1px solid #333; }
+    /* 전체 배경을 더 어둡게 */
+    .stApp { background-color: #050505; color: #ffffff; }
+    
+    /* 모든 텍스트를 선명한 흰색으로 강제 변경 */
+    p, div, span, label, h1, h2, h3, h4, h5, h6 { 
+        color: #ffffff !important; 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; 
+    }
+    
+    /* 입력창 및 선택창 테두리 강조 */
+    .stSelectbox, .stDateInput, .stSlider { 
+        border: 1px solid #444 !important; 
+    }
+    
+    /* 표(DataFrame) 스타일 강조 */
+    [data-testid="stDataFrame"] {
+        background-color: #111 !important;
+        border: 1px solid #333 !important;
+    }
+    
+    /* 주요 메트릭 값의 색상 강조 */
+    div[data-testid="stMetricValue"] { color: #00ffcc !important; font-size: 2.5rem !important; }
+    div[data-testid="stMetricLabel"] { color: #aaaaaa !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -153,7 +172,11 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     )
 
 # --- Main Execution ---
-st.title("✈️ ICN T2 3F Operations Command Center")
+st.title("✈️ ICN T2 OPERATIONS COMMAND CENTER")
+st.subheader("SELECT OPERATIONS DATE")
+selected_date = st.date_input("", value=datetime.date(2025, 10, 4), label_visibility="collapsed")
+
+# ... 이후 로직 진행 ...
 tab1 = st.tabs(["📊 HISTORICAL DATA ANALYSIS"])
 
 with tab1[0]:
