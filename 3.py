@@ -8,7 +8,20 @@ import streamlit as st
 AREA_FILE_PATH = "terminal_areas_grouped_2.csv"        
 BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"          
 
-st.set_page_config(page_title="인천공항 T2 3층 데이터 분석 센터", layout="wide")
+st.set_page_config(
+    page_title="ICN T2 Operations Center",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; }
+    h1, h2, h3 { color: #e0e0e0 !important; font-family: 'Inter', sans-serif; }
+    div[data-testid="stMetricValue"] { color: #00ffcc !important; }
+    .stDataFrame { border: 1px solid #333; border-radius: 5px; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 인력 배치 로직 함수 ---
 def calculate_staffing(people_count, current_open_counters=None):
@@ -91,55 +104,49 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
     
-    # 1. 시간 선택 및 데이터 필터링
-    selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
+    selected_t_index = st.select_slider("🕒 Select Time", options=time_options, format_func=lambda x: idx_to_label[x])
     current_counts = past_time_data[selected_t_index]['counts']
     excluded = ["GH", "IM1", "IM2"]
     filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
     total_people = sum(filtered_counts.values())
     
-    # 2. 상단 요약 카드 (Metric)
-    col1, col2 = st.columns([1, 2])
+    # Header Area
+    col1, col2 = st.columns([1, 3])
     with col1:
-        st.metric("현재 총 체류 여객", f"{total_people:,} 명")
+        st.metric("Total Passengers", f"{total_people:,}")
         
-    # 3. 중요 경고 (혼잡 구역이 있으면 경고 표시)
     urgent_areas = {k: v for k, v in filtered_counts.items() if v >= 80}
     if urgent_areas:
-        st.error(f"🚨 주의 필요: {len(urgent_areas)}개 구역에서 혼잡 발생")
+        st.error(f"🚨 ALERT: {len(urgent_areas)} zones require intervention")
     else:
-        st.success("✅ 전 구역 정상 운영 중")
+        st.success("✅ System Status: Nominal")
 
     st.divider()
     
-    # 4. 히트맵
-    st.subheader("📊 구역별 혼잡도 히트맵")
+    # Heatmap & Details
+    st.subheader("📊 Density Heatmap Analysis")
     heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
     blended = cv2.addWeighted(bg_img, 0.6, heatmap, 0.4, 0)
     st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
     
-    st.divider()
-    
-    # 5. 상세 운영 권고 (고급 표 적용)
-    st.subheader("📍 구역별 운영 권고 상세")
+    st.subheader("📍 Real-time Operation Recommendations")
     
     detailed_data = []
     for area in sorted(filtered_counts.keys()):
         count = filtered_counts.get(area, 0)
-        # 알고리즘 계산
-        level = "🔴 매우 혼잡" if count >= 160 else "🟠 혼잡" if count >= 120 else "🟡 주의" if count >= 80 else "🟢 보통"
+        # Algorithm Logic
+        level = "🔴 CRITICAL" if count >= 160 else "🟠 CONGESTED" if count >= 120 else "🟡 CAUTION" if count >= 80 else "🟢 NORMAL"
         open_cnt = 0 if count <= 0 else min(40, -(-int(count) // 5))
         support = 0 if count <= 80 else min(3, (count - 80) // 40 + 1)
         
-        detailed_data.append({"구역": area, "혼잡등급": level, "현재 인원": int(count), "권고 오픈 창구": open_cnt, "현장 지원": support})
+        detailed_data.append({"Zone": area, "Status": level, "Current Pax": int(count), "Recommended Counters": open_cnt, "Support Staff": support})
     
-    # Streamlit 데이터프레임으로 시각적 고급화
     st.dataframe(
         pd.DataFrame(detailed_data),
         use_container_width=True,
         column_config={
-            "권고 오픈 창구": st.column_config.ProgressColumn("권고 오픈 창구", format="%d 개", min_value=0, max_value=40),
-            "현장 지원": st.column_config.ProgressColumn("현장 지원", format="%d 명", min_value=0, max_value=3)
+            "Recommended Counters": st.column_config.ProgressColumn("Counters", format="%d", min_value=0, max_value=40),
+            "Support Staff": st.column_config.ProgressColumn("Staff", format="%d", min_value=0, max_value=3)
         },
         hide_index=True
     )
