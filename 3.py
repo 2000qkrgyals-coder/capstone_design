@@ -104,6 +104,15 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.divider()
 
+    # 분석 탭 하단에 배치
+    st.subheader("📝 일일 운영 분석 요약")
+    st.info(f"""
+        **{target_date_str} 운영 분석 결과:**
+        - **피크 시간대:** 데이터상 가장 인원이 몰렸던 시간은 {peak_time}입니다.
+        - **최대 혼잡 구역:** 금일 가장 혼잡도가 높았던 구역은 **{max_area}**입니다.
+        - **운영 효율:** 전체 운영 시간 중 혼잡 기준을 초과한 시간은 전체의 {congestion_ratio:.1f}%입니다.
+    """)
+
     # 6. [신규] 지능형 운영 제언 패널 (Actionable Insight)
     st.subheader("💡 지능형 운영 제언")
     
