@@ -73,6 +73,15 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
 def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, THRESHOLD):
     time_options = [int(t) for t in past_unique_times]
     idx_to_label = {t: index_to_time_str(t) for t in time_options}
+
+    st.sidebar.subheader("⚙️ 분석 설정")
+    # 1분(6개) ~ 10분(60개) 단위로 조절 가능하도록 설정
+    window_size = st.sidebar.select_slider(
+        "이동평균 윈도우 크기 (분)",
+        options=[1, 3, 5, 10],
+        value=5,
+        help="데이터의 노이즈를 제거하고 추세를 파악하기 위한 평균 구간을 설정합니다."
+    )
     
     # 1. 시간 선택
     selected_t_index = st.select_slider("🕒 조회 시간 선택", options=time_options, format_func=lambda x: idx_to_label[x])
@@ -113,26 +122,21 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.divider()
 
-    # 5. [수정] 이동평균을 적용한 시간대별 전체 인원 추이 차트
+    # 5. [수정] 사이드바 값을 반영한 이동평균 적용
     st.divider()
-    st.subheader("📈 전체 여객 인원 흐름 (이동평균 분석)")
+    st.subheader(f"📈 전체 여객 인원 흐름 ({window_size}분 이동평균)")
     
-    # 데이터 프레임 생성
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    df_trend = pd.DataFrame(time_trend_data)
-    df_trend = df_trend.set_index("시간")
+    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
+    
+    # 윈도우 사이즈 반영 (10초 단위 데이터이므로 *6을 하여 분 단위로 환산)
+    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
 
-    # 이동평균 적용 (1분=6개 데이터, 5분=30개 데이터)
-    # window 값을 6(1분) 또는 30(5분)으로 조절하세요
-    window_size = 6 
-    df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size).mean()
-
-    # 차트 시각화
     st.area_chart(df_trend[['이동평균']], color="#3498db")
     
     # 5. 상세 운영 권고 (고급 표 적용)
