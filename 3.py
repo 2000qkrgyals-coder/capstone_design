@@ -240,14 +240,14 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         # [중요] 모든 컬럼을 확실하게 숫자형으로 강제 변환
         df_area_trend = df_area_trend.apply(pd.to_numeric, errors='coerce').fillna(0)
 
-        # 2. 이동평균 적용
+        # 1. 이동평균 계산 (df_ma는 이미 인덱스가 '시간'인 상태)
         df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
         
-        # 2. 이동평균 적용 (window_minutes * 6은 10초 데이터 기준)
-        df_ma = df_area_trend.rolling(window=window_minutes * 6).mean()
+        # 2. [수정] 인덱스를 컬럼으로 변환하여 '시간'을 일반 컬럼으로 만듦
+        df_plot = df_ma.reset_index()
         
-        # 2. Altair 차트용 데이터 변환 (Long Format)
-        df_plot = df_area_trend.melt('시간', var_name='구역', value_name='인원')
+        # 3. 그 다음 melt 실행
+        df_plot = df_plot.melt('시간', var_name='구역', value_name='인원')
         
         # 3. Altair 차트 생성
         import altair as alt
