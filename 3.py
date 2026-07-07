@@ -157,10 +157,19 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
         st.bar_chart(df_top5.set_index("구역"), color="#FF4B4B") # 경고색인 빨간색 활용
 
-    # 5. [전체 인원 흐름 차트]
+   # 5. [전체 인원 흐름 차트]
     st.divider()
-    st.subheader(f"📈 전체 여객 인원 흐름 ({window_size}분 이동평균)")
+    st.subheader("📈 전체 여객 인원 흐름 분석")
     
+    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
+    window_size = st.select_slider(
+        "분석 구간 선택 (이동평균 분)", 
+        options=[1, 3, 5, 10], 
+        value=5,
+        help="데이터 노이즈를 제거하기 위한 평균 구간 설정입니다."
+    )
+    
+    # 데이터 생성
     time_trend_data = []
     for t in sorted(past_time_data.keys()):
         counts = past_time_data[t]['counts']
@@ -169,18 +178,12 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     
     df_trend = pd.DataFrame(time_trend_data).set_index("시간")
     
-    # 2. 이동평균 계산 (window_size 변수가 위에서 정의되어 있어야 함)
+    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
-
-    # 3. 차트 출력
-    st.area_chart(df_trend[['이동평균']], color="#3498db")
-    st.divider()
-    st.subheader("📈 전체 여객 인원 흐름")
-    window_size = st.select_slider("분석 구간 선택 (이동평균 분)", options=[1, 3, 5, 10], value=5)
     
-    # ... (전체 인원 흐름 데이터 생성 로직) ...
+    # 차트 출력
     st.area_chart(df_trend[['이동평균']], color="#3498db")
-
+    
     # 2. [신규] 구역별 상세 분석 및 피크 탐지
     st.divider()
     st.subheader("🔍 구역별 상세 인원 분석 (피크 탐지)")
@@ -189,7 +192,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
     if selected_areas:
-        # 선택된 구역별 데이터 프레임 생성
+        # 데이터 프레임 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
@@ -199,10 +202,12 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         
         # 선택 구역별 차트 및 피크 표시
         for area in selected_areas:
+            # 이동평균(30개 구간 = 5분)
             ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
             
-            # 피크 감지 (공항의 3단계 피크 패턴을 잡기 위해 prominence 조정)
-            peaks, _ = signal.find_peaks(ma, prominence=ma.max()*0.3, distance=60)
+            # 피크 감지 (값이 0일 경우 에러 방지용 threshold 설정)
+            threshold = ma.max() * 0.3 if ma.max() > 0 else 1
+            peaks, _ = signal.find_peaks(ma, prominence=threshold, distance=60)
             
             # 차트 시각화
             st.write(f"**{area} 구역 인원 추이**")
