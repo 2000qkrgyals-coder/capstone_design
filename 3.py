@@ -14,12 +14,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Dark Mode & Command Center Style
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; }
-    h1, h2, h3 { color: #e0e0e0 !important; font-family: 'Inter', sans-serif; }
-    div[data-testid="stMetricValue"] { color: #00ffcc !important; }
-    .stDataFrame { border: 1px solid #333; border-radius: 5px; }
+    .stApp { background-color: #0e1117; color: #e0e0e0; }
+    h1, h2, h3 { color: #00ffcc !important; font-family: 'Courier New', monospace; letter-spacing: 2px; }
+    .stMetricValue { color: #ffffff !important; font-family: monospace; }
+    .stAlert { background-color: #1a1a1a !important; border: 1px solid #333; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -151,18 +152,20 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         hide_index=True
     )
 
-st.set_page_config(
-    page_title="ICN T2 Operations Center",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Main Execution ---
+st.title("✈️ ICN T2 3F Operations Command Center")
+tab1 = st.tabs(["📊 HISTORICAL DATA ANALYSIS"])
 
-# Dark Mode & Command Center Style
-st.markdown("""
-    <style>
-    .stApp { background-color: #0e1117; color: #e0e0e0; }
-    h1, h2, h3 { color: #00ffcc !important; font-family: 'Courier New', monospace; letter-spacing: 2px; }
-    .stMetricValue { color: #ffffff !important; font-family: monospace; }
-    .stAlert { background-color: #1a1a1a !important; border: 1px solid #333; }
-    </style>
-    """, unsafe_allow_html=True)
+with tab1[0]:
+    # Sidebar or Header for Date Selection
+    col_date, col_spacer = st.columns([1, 4])
+    with col_date:
+        selected_date = st.date_input("📅 SELECT TARGET DATE", value=datetime.date(2025, 10, 4))
+    
+    target_date_str = selected_date.strftime("%Y-%m-%d")
+    area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
+    
+    if exists:
+        render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, target_date_str, 75)
+    else:
+        st.error(f"❌ ERROR: Data file for {target_date_str} not found in repository.")
