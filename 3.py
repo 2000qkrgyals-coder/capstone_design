@@ -162,7 +162,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     st.divider()
     st.subheader("📈 전체 여객 인원 흐름 분석")
     
-    # [수정 1] 차트보다 먼저 슬라이더를 배치해야 합니다.
     window_size = st.select_slider(
         "분석 구간 선택 (이동평균 분)", 
         options=[1, 3, 5, 10], 
@@ -177,21 +176,22 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    df_trend = pd.DataFrame(time_trend_data).set_index("시간")
+    # 시간순 정렬 및 인덱스 설정
+    df_trend = pd.DataFrame(time_trend_data).sort_values("시간").set_index("시간")
     
-    # 이동평균 계산 (이제 window_size가 정의되었으므로 에러 없음)
+    # 이동평균 계산
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6).mean()
     
     # 차트 출력
     st.area_chart(df_trend[['이동평균']], color="#3498db")
     
-    # 2. [신규] 구역별 상세 분석 및 피크 탐지
+    # 2. [신규] 구역별 상세 분석
     st.divider()
-    st.subheader("🔍 구역별 상세 인원 분석 (피크 탐지)")
+    st.subheader("🔍 구역별 상세 인원 분석")
     
     all_areas = sorted([a for a in area_df['area_name'].unique() if a not in ["GH", "IM1", "IM2"]])
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
-
+    
     if selected_areas:
         # 데이터 프레임 생성
         area_trend_data = []
@@ -199,24 +199,17 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
             counts = past_time_data[t]['counts']
             area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
         
-        df_area_trend = pd.DataFrame(area_trend_data).set_index("시간")
+        # 시간순 정렬 및 인덱스 설정
+        df_area_trend = pd.DataFrame(area_trend_data).sort_values("시간").set_index("시간")
         
-        # 선택 구역별 차트 및 피크 표시
+        # 선택 구역별 차트 출력
         for area in selected_areas:
             # 이동평균(30개 구간 = 5분)
             ma = df_area_trend[area].rolling(window=30).mean().fillna(0)
             
-            # 피크 감지 (값이 0일 경우 에러 방지용 threshold 설정)
-            threshold = ma.max() * 0.3 if ma.max() > 0 else 1
-            peaks, _ = signal.find_peaks(ma, prominence=threshold, distance=60)
-            
             # 차트 시각화
             st.write(f"**{area} 구역 인원 추이**")
             st.line_chart(ma)
-            
-            if len(peaks) > 0:
-                peak_times = [ma.index[p] for p in peaks]
-                st.caption(f"📍 주요 피크 발생 시간: {', '.join(peak_times)}")
     
     # 5. 상세 운영 권고
     st.divider()
