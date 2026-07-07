@@ -189,28 +189,37 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     all_areas = sorted([a for a in area_df['area_name'].unique() if a not in ["GH", "IM1", "IM2"]])
     selected_areas = st.multiselect("상세 분석할 구역을 선택하세요", all_areas, default=all_areas[:2])
 
+    # 2. 구역별 상세 분석 및 피크 탐지 (안정화 버전)
     if selected_areas:
-        # 데이터프레임 생성
+        # 1. 데이터 프레임 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
+            # t는 time_index (int)
             counts = past_time_data[t]['counts']
-            area_trend_data.append({"시간": idx_to_label[t], **{a: counts.get(a, 0) for a in selected_areas}})
+            # t를 기반으로 시간값 생성 (초 단위 계산)
+            seconds = int(t) * 10
+            area_trend_data.append({"시간_초": seconds, **{a: counts.get(a, 0) for a in selected_areas}})
         
         df_area_trend = pd.DataFrame(area_trend_data)
-        df_area_trend['시간_obj'] = pd.to_datetime(df_area_trend['시간'], format='%H:%M:%S')
-        df_area_trend = df_area_trend.sort_values('시간_obj').set_index('시간_obj')
         
-        # 선택 구역별 차트 및 피크 표시
+        # 2. 초 단위를 기반으로 시간축 생성 (오늘 날짜 00:00:00부터 시작)
+        df_area_trend['시간_obj'] = pd.to_timedelta(df_area_trend['시간_초'], unit='s') + pd.Timestamp("2026-01-01")
+        df_area_trend = df_area_trend.set_index('시간_obj')
+        
+        # 3. 차트 생성
         for area in selected_areas:
+            # 1시간 단위 리샘플링 (1H)
             ma_hourly = df_area_trend[area].resample('1H').mean().fillna(0)
+            
+            # 상위 3개 피크 추출
             top3_peaks = ma_hourly.nlargest(3).sort_index()
             
             st.write(f"**{area} 구역 시간대별 인원 평균**")
             st.line_chart(ma_hourly)
             
+            # HH:MM 형식으로 출력
             peak_labels = [t.strftime('%H:%M') for t in top3_peaks.index]
             st.caption(f"📍 주요 피크 예상 시간대: {', '.join(peak_labels)}")
-    
     # 5. 상세 운영 권고
     st.divider()
     detailed_data = []
