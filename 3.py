@@ -119,7 +119,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     max_area = max(filtered_counts, key=filtered_counts.get) if filtered_counts else "없음"
     
     # 📝 일일 운영 분석 요약 패널
-    st.divider()
     st.subheader("📝 일일 운영 분석 요약")
     st.info(f"""
         **{target_date_str} 운영 분석 결과:**
@@ -128,6 +127,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
     """)
 
     # 6. [신규] 지능형 운영 제언 패널 (Actionable Insight)
+    st.divider()
     st.subheader("💡 지능형 운영 제언")
     
     if urgent_areas:
@@ -141,6 +141,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         st.success("현재 모든 구역이 원활하게 운영 중입니다. 추가 조치가 필요하지 않습니다.")
 
     # 3. [개선] 레이아웃 분할 (좌: 히트맵, 우: Top 5 혼잡 구역 차트)
+    st.divider()
     c1, c2 = st.columns([1.5, 1])
     
     with c1:
