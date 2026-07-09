@@ -232,7 +232,6 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         
         df_area = pd.DataFrame(area_trend_data)
         
-        # [디버깅] 데이터 확인: 데이터가 비어있지 않은지 확인
         if df_area.empty:
             st.warning("선택한 구역에 대한 데이터가 없습니다.")
         else:
@@ -244,9 +243,9 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
             
             # 4. Altair 차트 생성 (시각적 최적화)
             chart_area = alt.Chart(df_area).mark_line(
-                strokeWidth=0.5,       # 선의 두께를 더 얇게 (1.0 미만 가능)
+                strokeWidth=0.5,       
                 opacity=0.7,          
-                point=alt.OverlayMarkDef(size=5, filled=True) # 점의 크기를 줄여서 정교하게 표현
+                point=False
             ).encode(
                 x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
                 y=alt.Y('이동평균:Q', title="체류 인원"),
