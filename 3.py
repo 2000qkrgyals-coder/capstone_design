@@ -212,15 +212,14 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
 
     st.altair_chart(chart, use_container_width=True)
 
+    # 5. [전체 인원 흐름 차트] 아래에 추가
     st.divider()
     st.subheader("🔍 특정 구역 상세 인원 추이")
     
-    # 1. 구역 선택 (멀티셀렉트)
     all_areas = sorted(list(filtered_counts.keys()))
     selected_areas = st.multiselect("분석할 구역을 선택하세요", options=all_areas, default=[all_areas[0]] if all_areas else [])
 
     if selected_areas:
-        # 2. 구역별 데이터 생성
         area_trend_data = []
         for t in sorted(past_time_data.keys()):
             counts = past_time_data[t]['counts']
@@ -232,21 +231,31 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
                 })
         
         df_area = pd.DataFrame(area_trend_data)
-        df_area['시간'] = pd.to_datetime(df_area['시간'], format='%H:%M:%S', errors='coerce')
         
-        # 3. 구역별 이동평균 계산 (구역별로 그룹화)
-        df_area = df_area.set_index("시간")
-        df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
-        
-        # 4. Altair 차트 생성 (strokeWidth 속성 추가)
-        chart_area = alt.Chart(df_area.reset_index()).mark_line( 
-            strokeWidth=1.5
-        ).encode(
-            x=alt.X('시간:T', axis=alt.Axis(format='%H:%M')),
-            y=alt.Y('이동평균:Q', title="체류 인원"),
-            color='구역:N',
-            tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
-        ).properties(height=300)
+        # [디버깅] 데이터 확인: 데이터가 비어있지 않은지 확인
+        if df_area.empty:
+            st.warning("선택한 구역에 대한 데이터가 없습니다.")
+        else:
+            df_area['시간'] = pd.to_datetime(df_area['시간'], format='%H:%M:%S', errors='coerce')
+            df_area = df_area.dropna(subset=['시간'])
+            
+            # 구역별 이동평균 계산
+            df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
+            
+            # Altair 차트 생성 (strokeWidth 명시)
+            chart_area = alt.Chart(df_area).mark_line(
+                strokeWidth=1.0, 
+                point=True
+            ).encode(
+                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M')),
+                y=alt.Y('이동평균:Q', title="체류 인원"),
+                color='구역:N',
+                tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
+            ).properties(height=300)
+
+            st.altair_chart(chart_area, use_container_width=True)
+    else:
+        st.info("비교할 구역을 선택해 주세요.")
 
     # 5. 상세 운영 권고
     st.divider()
