@@ -48,14 +48,14 @@ def load_data_by_date(selected_date_str):
 
 def get_daily_peaks(df_trend):
     peaks = {}
-    # 요청하신 시간대 기준 설정
-    ranges = {
-        "아침": ("06:00", "10:00"),
-        "점심": ("11:00", "15:00"),
-        "저녁": ("17:00", "21:00")
-    }
-    for label, (start, end) in ranges.items():
-        # 지정된 범위 내 데이터 필터링
+    # 레이블을 더 전문적인 용어로 변경
+    ranges = [
+        ("1차 피크", "05:00", "09:00"),
+        ("2차 피크", "09:00", "17:00"),
+        ("3차 피크", "17:00", "21:00")
+    ]
+    
+    for label, start, end in ranges:
         subset = df_trend.between_time(start, end)
         if not subset.empty:
             max_val = subset['이동평균'].max()
