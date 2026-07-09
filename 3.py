@@ -46,6 +46,23 @@ def load_data_by_date(selected_date_str):
         time_grouped_data[t_index] = {'counts': dict(zip(filtered['area'], filtered['num_people']))}
     return area_df, time_grouped_data, sorted(list(time_grouped_data.keys())), bg_img, True
 
+def get_daily_peaks(df_trend):
+    peaks = {}
+    # 시간 범위를 시계열 인덱스에 맞춰 정의
+    ranges = {
+        "아침": ("06:00", "11:00"),
+        "낮": ("11:00", "17:00"),
+        "저녁": ("17:00", "22:00")
+    }
+    for label, (start, end) in ranges.items():
+        # 인덱스가 datetime 형식일 때만 가능
+        subset = df_trend.between_time(start, end)
+        if not subset.empty:
+            max_val = subset['이동평균'].max()
+            max_time = subset['이동평균'].idxmax()
+            peaks[label] = (max_time, max_val)
+    return peaks
+
 def generate_density_heatmap(area_df, current_counts, img_shape):
     height, width, _ = img_shape
     heatmap_grid = np.zeros((height, width), dtype=np.float32)
@@ -210,7 +227,30 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         height=300
     )
 
-    st.altair_chart(chart, use_container_width=True)
+    # 피크 데이터 계산
+    peak_data = get_daily_peaks(df_trend)
+    
+    # 3. 분석 요약 카드 (상단에 피크 정보 출력)
+    cols = st.columns(3)
+    for i, (label, (t, val)) in enumerate(peak_data.items()):
+        cols[i].metric(f"{label} 피크", t.strftime('%H:%M'), f"{int(val)}명")
+
+    # 4. 차트에 피크 표시를 위한 데이터프레임 생성
+    peak_annotations = []
+    for label, (t, val) in peak_data.items():
+        peak_annotations.append({"시간": t, "인원": val, "라벨": label})
+    
+    df_peaks = pd.DataFrame(peak_annotations)
+
+    # 5. 기존 차트에 라인과 텍스트 레이어 추가
+    rules = alt.Chart(df_peaks).mark_rule(color='red', strokeDash=[3,3]).encode(x='시간:T')
+    text = alt.Chart(df_peaks).mark_text(align='left', dx=5, dy=-10, color='red').encode(
+        x='시간:T', y='인원:Q', text=alt.Text('라벨:N')
+    )
+
+    # 최종 차트 결합
+    final_chart = (chart + rules + text)
+    st.altair_chart(final_chart, use_container_width=True)
 
     # 5. [전체 인원 흐름 차트] 아래에 추가
     st.divider()
