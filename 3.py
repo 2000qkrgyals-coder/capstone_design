@@ -239,12 +239,15 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         df_area = df_area.set_index("시간")
         df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
         
-        # 4. Altair 차트 생성 (색상 구분)
-        chart_area = alt.Chart(df_area.reset_index()).mark_line(point=True).encode(
+        # 4. Altair 차트 생성 (strokeWidth 속성 추가)
+        chart_area = alt.Chart(df_area.reset_index()).mark_line(
+            point=True, 
+            strokeWidth=1.5
+        ).encode(
             x=alt.X('시간:T', axis=alt.Axis(format='%H:%M')),
             y=alt.Y('이동평균:Q', title="체류 인원"),
             color='구역:N',
-            tooltip=['시간', '구역', '이동평균']
+            tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
         ).properties(height=300)
 
         st.altair_chart(chart_area, use_container_width=True)
