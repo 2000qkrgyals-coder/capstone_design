@@ -242,16 +242,20 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
             # 구역별 이동평균 계산
             df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
             
-            # Altair 차트 생성 (strokeWidth 명시)
-            chart_area = alt.Chart(df_area).mark_line(
-                strokeWidth=1.0, 
-                point=True
-            ).encode(
-                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M')),
-                y=alt.Y('이동평균:Q', title="체류 인원"),
-                color='구역:N',
-                tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
-            ).properties(height=300)
+            # 4. Altair 차트 생성 (시각적 최적화)
+        chart_area = alt.Chart(df_area).mark_line(
+            strokeWidth=0.8,       # 선의 두께를 더 얇게 (1.0 미만 가능)
+            opacity=0.7,           # 투명도를 주어 겹칠 때 답답함을 해소
+            point=alt.OverlayMarkDef(size=15, filled=True) # 점의 크기를 줄여서 정교하게 표현
+        ).encode(
+            x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
+            y=alt.Y('이동평균:Q', title="체류 인원"),
+            color=alt.Color('구역:N', legend=alt.Legend(title="선택 구역")),
+            tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
+        ).properties(
+            height=300,
+            title="선택 구역별 인원 추이 상세"
+        ).interactive() # 마우스 휠로 확대/축소 가능하게 설정
 
             st.altair_chart(chart_area, use_container_width=True)
     else:
