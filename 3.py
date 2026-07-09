@@ -177,17 +177,22 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         filtered = {k: v for k, v in counts.items() if k not in ["GH", "IM1", "IM2"]}
         time_trend_data.append({"시간": idx_to_label[t], "인원": sum(filtered.values())})
     
-    # 이동평균 계산 로직 개선
+    # --- 수정된 데이터 처리 로직 ---
+    # 1. 원본 시간 데이터를 가져와 변환
     df_trend = pd.DataFrame(time_trend_data)
-    df_trend['시간'] = pd.to_datetime(df_trend['시간'], format='%H:%M:%S')
+    
+    # 2. errors='coerce'를 사용하여 변환 불가한 값을 NaT로 처리
+    df_trend['시간'] = pd.to_datetime(df_trend['시간'], format='%H:%M:%S', errors='coerce')
+    
+    # 3. 변환에 실패한 행(NaT) 제거
+    df_trend = df_trend.dropna(subset=['시간'])
+    
+    # 4. 인덱스 설정 및 정렬
     df_trend = df_trend.set_index("시간").sort_index()
     
-    # 데이터 누락 방지를 위한 리샘플링 (10초 단위로 정규화)
-    df_trend = df_trend.resample('10S').interpolate(method='linear')
-    
-    # 이동평균: window_size(분) * 6 (10초마다 1개 데이터이므로 6개 = 1분)
+    # 5. 이제 이동평균 계산 진행
     df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6, min_periods=1).mean()
-    
+        
     # 4. 차트 출력
     import altair as alt
 
