@@ -48,14 +48,14 @@ def load_data_by_date(selected_date_str):
 
 def get_daily_peaks(df_trend):
     peaks = {}
-    # 시간 범위를 시계열 인덱스에 맞춰 정의
+    # 요청하신 시간대 기준 설정
     ranges = {
-        "아침": ("06:00", "11:00"),
-        "낮": ("11:00", "17:00"),
-        "저녁": ("17:00", "22:00")
+        "아침": ("06:00", "10:00"),
+        "점심": ("11:00", "15:00"),
+        "저녁": ("17:00", "21:00")
     }
     for label, (start, end) in ranges.items():
-        # 인덱스가 datetime 형식일 때만 가능
+        # 지정된 범위 내 데이터 필터링
         subset = df_trend.between_time(start, end)
         if not subset.empty:
             max_val = subset['이동평균'].max()
@@ -227,25 +227,25 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         height=300
     )
 
-    # 피크 데이터 계산
+    # 피크 데이터 계산 (수정된 함수 사용)
     peak_data = get_daily_peaks(df_trend)
     
-    # 3. 분석 요약 카드 (상단에 피크 정보 출력)
+    # 상단 요약 카드 출력
     cols = st.columns(3)
     for i, (label, (t, val)) in enumerate(peak_data.items()):
         cols[i].metric(f"{label} 피크", t.strftime('%H:%M'), f"{int(val)}명")
 
-    # 4. 차트에 피크 표시를 위한 데이터프레임 생성
+    # 차트 주석(Annotation) 데이터 생성
     peak_annotations = []
     for label, (t, val) in peak_data.items():
         peak_annotations.append({"시간": t, "인원": val, "라벨": label})
     
     df_peaks = pd.DataFrame(peak_annotations)
 
-    # 5. 기존 차트에 라인과 텍스트 레이어 추가
-    rules = alt.Chart(df_peaks).mark_rule(color='red', strokeDash=[3,3]).encode(x='시간:T')
-    text = alt.Chart(df_peaks).mark_text(align='left', dx=5, dy=-10, color='red').encode(
-        x='시간:T', y='인원:Q', text=alt.Text('라벨:N')
+    # 차트 레이어 추가 (세로선 및 텍스트)
+    rules = alt.Chart(df_peaks).mark_rule(color='#e74c3c', strokeDash=[3,3]).encode(x='시간:T')
+    text = alt.Chart(df_peaks).mark_text(align='left', dx=5, dy=-10, color='#e74c3c', fontWeight='bold').encode(
+        x='시간:T', y='인원:Q', text='라벨:N'
     )
 
     # 최종 차트 결합
