@@ -243,7 +243,7 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
             
             # 4. Altair 차트 생성 (시각적 최적화)
             chart_area = alt.Chart(df_area).mark_line(
-                strokeWidth=0.5,                
+                strokeWidth=1.5,                
                 point=False
             ).encode(
                 x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
