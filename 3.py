@@ -277,63 +277,40 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         else:
             df_area['시간'] = pd.to_datetime(df_area['시간'], format='%H:%M:%S', errors='coerce')
             df_area = df_area.dropna(subset=['시간'])
-            
-            # 구역별 이동평균 계산
             df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
             
-            # 4. Altair 차트 생성 (시각적 최적화)
-            chart_area = alt.Chart(df_area).mark_line(
-                strokeWidth=1.5,                
-                point=False
-            ).encode(
+            # 1. 각 구역별 최대값(피크) 찾기
+            peak_indices = df_area.groupby('구역')['이동평균'].idxmax()
+            df_peaks = df_area.loc[peak_indices]
+            
+            # 2. 기본 라인 차트 생성
+            base_chart = alt.Chart(df_area).encode(
                 x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
                 y=alt.Y('이동평균:Q', title="체류 인원"),
-                color=alt.Color('구역:N', legend=alt.Legend(title="선택 구역")),
-                tooltip=['시간', '구역', alt.Tooltip('이동평균', format='.1f')]
-            ).properties(
-                height=300,
-                title="선택 구역별 인원 추이 상세"
-            ).interactive() # 마우스 휠로 확대/축소 가능하게 설정
+                color='구역:N'
+            )
+            
+            line = base_chart.mark_line(strokeWidth=1.5)
+            
+            # 3. 각 구역별 피크 지점 점(Point)과 텍스트 레이어
+            peak_points = alt.Chart(df_peaks).mark_circle(size=60).encode(
+                x='시간:T', y='이동평균:Q', color='구역:N'
+            )
+            
+            peak_text = alt.Chart(df_peaks).mark_text(
+                align='left', dx=7, dy=-7, fontWeight='bold'
+            ).encode(
+                x='시간:T', y='이동평균:Q', 
+                text=alt.Text('이동평균:Q', format='.0f'), 
+                color='구역:N'
+            )
+            
+            # 차트 결합
+            chart_area = (line + peak_points + peak_text).properties(
+                height=300, title="선택 구역별 인원 추이 상세"
+            ).interactive()
 
-            if df_area.empty:
-            st.warning("선택한 구역에 대한 데이터가 없습니다.")
-            else:
-                df_area['시간'] = pd.to_datetime(df_area['시간'], format='%H:%M:%S', errors='coerce')
-                df_area = df_area.dropna(subset=['시간'])
-                df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
-                
-                # 1. 각 구역별 최대값(피크) 찾기
-                peak_indices = df_area.groupby('구역')['이동평균'].idxmax()
-                df_peaks = df_area.loc[peak_indices]
-                
-                # 2. 기본 라인 차트 생성
-                base_chart = alt.Chart(df_area).encode(
-                    x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', title='시간')),
-                    y=alt.Y('이동평균:Q', title="체류 인원"),
-                    color='구역:N'
-                )
-                
-                line = base_chart.mark_line(strokeWidth=1.5)
-                
-                # 3. 각 구역별 피크 지점 점(Point)과 텍스트 레이어
-                peak_points = alt.Chart(df_peaks).mark_circle(size=60).encode(
-                    x='시간:T', y='이동평균:Q', color='구역:N'
-                )
-                
-                peak_text = alt.Chart(df_peaks).mark_text(
-                    align='left', dx=7, dy=-7, fontWeight='bold'
-                ).encode(
-                    x='시간:T', y='이동평균:Q', 
-                    text=alt.Text('이동평균:Q', format='.0f'), 
-                    color='구역:N'
-                )
-                
-                # 차트 결합
-                chart_area = (line + peak_points + peak_text).properties(
-                    height=300, title="선택 구역별 인원 추이 상세"
-                ).interactive()
-    
-                st.altair_chart(chart_area, use_container_width=True)
+            st.altair_chart(chart_area, use_container_width=True)
     else:
         st.info("비교할 구역을 선택해 주세요.")
 
