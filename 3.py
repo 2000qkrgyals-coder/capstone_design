@@ -304,9 +304,18 @@ def render_past_dashboard(area_df, past_time_data, past_unique_times, bg_img, ta
         
         st.altair_chart(line + rules + text, use_container_width=True)
         
-        # 하단 요약 표
+        # --- [수정] 피크 요약 데이터 표 출력 부분 ---
         st.write("#### 📍 구역별 피크 요약")
-        st.dataframe(df_peaks.pivot(index='구역', columns='피크단계', values='시간').astype(str))
+        
+        # 1. 시각화용 데이터프레임을 복사하여 시간 포맷팅
+        df_peaks_display = df_peaks.copy()
+        df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
+        
+        # 2. 피벗 테이블 생성 (날짜 없이 시:분:초만 표시됨)
+        pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
+        
+        # 3. 데이터프레임 출력
+        st.dataframe(pivot_df, use_container_width=True)
 
     # 5. 상세 운영 권고
     st.divider()
