@@ -23,7 +23,6 @@ st.markdown("""
         .stMetric label { color: #94a3b8 !important; font-weight: 600; }
         .stMetric [data-testid="stMetricValue"] { color: #f8fafc !important; }
         h1, h2, h3 { color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
-        .st-emotion-cache-1wivap2 { background-color: #0f172a; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -119,19 +118,18 @@ target_date_str = selected_date.strftime("%Y-%m-%d")
 area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
 
 # ==========================================
-# 1. 🚨 통합 관제 상황판 (Dashboard) - 메인 화면
+# 1. 🚨 통합 관제 상황판 (Dashboard)
 # ==========================================
 if menu == "🚨 통합 관제 상황판 (Dashboard)":
     st.title("🛡️ 인천공항 T2 3층 통합 운영 상황판 (IOC Dashboard)")
     st.markdown(f"**현재 관제 일자:** `{target_date_str}` | **시스템 상태:** `[● ONLINE / SYNCED]`")
     
     if not exists:
-        st.error(f"⚠️ [{target_date_str}] 해당 일자의 수집된 세션 데이터가 존재하지 않습니다. 데이터 디렉토리를 확인하세요.")
+        st.error(f"⚠️ [{target_date_str}] 해당 일자의 수집된 세션 데이터가 존재하지 않습니다.")
     else:
         time_options = [int(t) for t in past_unique_times]
         idx_to_label = {t: index_to_time_str(t) for t in time_options}
 
-        # 상단 타임슬라이더 컨트롤
         selected_t_index = st.select_slider(
             "🕒 [실시간 타임라인 시뮬레이터] 관제 시점 제어", 
             options=time_options, 
@@ -142,30 +140,26 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
         excluded = ["GH", "IM1", "IM2"]
         filtered_counts = {k: v for k, v in current_counts.items() if k not in excluded}
         
-        # KPI 데이터 연산
         total_people = sum(filtered_counts.values())
         urgent_areas = {k: v for k, v in filtered_counts.items() if v >= 80}
         max_area = max(filtered_counts, key=filtered_counts.get) if filtered_counts else "없음"
         norm_ratio = (1 - (len(urgent_areas) / len(filtered_counts))) * 100 if filtered_counts else 100
 
-        # KPI 메트릭 카드 배치
         col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("총 체류 여객", f"{total_people:,} 명", delta="실시간 집계", delta_color="off")
+        col1.metric("총 체류 여객", f"{total_people:,} 명")
         col2.metric("혼잡 구역 수", f"{len(urgent_areas)} 곳", delta="주의 대상" if urgent_areas else "양호", delta_color="inverse")
         col3.metric("최대 밀집 구역", max_area)
-        col4.metric("운영 정상도", f"{norm_ratio:.1f}%", delta="목표치 95% 상회" if norm_ratio >= 95 else "점검 필요")
+        col4.metric("운영 정상도", f"{norm_ratio:.1f}%")
         col5.metric("센서 정제 정확도", "96.4%", delta="±3.6% 오차")
 
         st.divider()
 
-        # 실시간 경고 및 제언 패널
         if urgent_areas:
             top_urgent = max(urgent_areas, key=urgent_areas.get)
             st.warning(f"🚨 **[자동 경보 발령]** 현재 **{top_urgent}** 구역의 체류 여객이 임계치(80명)를 초과했습니다. (현재 체류: **{urgent_areas[top_urgent]}명**). 즉시 현장 지원 인력 투입 및 창구 확대를 권고합니다.")
         else:
             st.success("✨ **[정상 운영]** 현재 터미널 내 모든 구역이 안정적인 밀집도 범위 내에서 원활하게 소화되고 있습니다.")
 
-        # 레이아웃 분할: 좌측(히트맵), 우측(실시간 Top 5 바차트)
         c1, c2 = st.columns([1.6, 1])
         with c1:
             st.subheader("🗺️ 실시간 터미널 3층 공간 밀집도 히트맵")
@@ -180,11 +174,11 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             st.bar_chart(df_top5.set_index("구역"), color="#ff4b4b", height=380)
 
 # ==========================================
-# 2. 🗺️ 터미널 구역별 상세 분석
+# 2. 🗺️ 터미널 구역별 상세 분석 (구역 선택 기능 포함)
 # ==========================================
 elif menu == "🗺️ 터미널 구역별 상세 분석":
-    st.title("📈 구역별 여객 흐름 및 시계열 트렌드 분석")
-    st.markdown("선택된 날짜의 전체 트렌드, 피크 타임 및 개별 구역별 밀집 변화 추이를 심층 분석합니다.")
+    st.title("📈 구역별 여객 흐름 및 시계열 트렌드 심층 분석")
+    st.markdown("전체 터미널 흐름을 파악하고, **특정 구역들을 선택하여 상세 인원 추이와 피크 타임**을 정밀 검토합니다.")
     
     if not exists:
         st.error("데이터가 없습니다.")
@@ -214,7 +208,7 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
         chart = alt.Chart(df_plot).mark_area(color="#3b82f6", opacity=0.5).encode(
             x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour'), title='시간 타임라인'), 
             y=alt.Y('이동평균:Q', title='보정 체류 인원 (명)')
-        ).properties(height=300)
+        ).properties(height=280)
 
         peak_data = get_daily_peaks(df_trend)
         p_cols = st.columns(3)
@@ -235,10 +229,18 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
 
         st.divider()
         
-        # 특정 구역 상세 선택 분석
-        st.subheader("🔍 특정 구역 상세 시계열 비교 분석")
-        all_areas = sorted(list(filtered_counts.keys())) if 'filtered_counts' in locals() else []
-        selected_areas = st.multiselect("분석할 구역 복수 선택", options=all_areas, default=all_areas[:2] if len(all_areas) >= 2 else all_areas)
+        # 🔍 특정 구역 상세 선택 분석 (이 부분이 복원되었습니다!)
+        st.subheader("🔍 특정 구역 선택 및 상세 시계열 추이 분석")
+        
+        # 첫 번째 시점의 키들을 기준으로 구역 목록 추출
+        sample_counts = past_time_data[list(past_time_data.keys())[0]]['counts']
+        all_areas = sorted([k for k in sample_counts.keys() if k not in ["GH", "IM1", "IM2"]])
+        
+        selected_areas = st.multiselect(
+            "📍 집중 분석할 구역을 다중 선택하세요 (복수 선택 가능)", 
+            options=all_areas, 
+            default=all_areas[:2] if len(all_areas) >= 2 else all_areas
+        )
 
         if selected_areas:
             area_trend_data = []
@@ -256,19 +258,50 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             df_area = df_area.dropna(subset=['시간']).set_index("시간")
             df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
             
-            base_area = alt.Chart(df_area.reset_index()).encode(
-                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M')),
-                y=alt.Y('이동평균:Q', title="구역별 체류 인원"),
-                color='구역:N'
-            ).properties(height=320)
+            # 구역별 피크 데이터 추출
+            peak_details = []
+            for area in selected_areas:
+                area_df_subset = df_area[df_area['구역'] == area].copy()
+                peaks = get_daily_peaks(area_df_subset)
+                for label, (t, val) in peaks.items():
+                    peak_details.append({"구역": area, "피크단계": label, "시간": t, "인원": val})
             
-            st.altair_chart(base_area.mark_line(strokeWidth=2), use_container_width=True)
+            df_area_peaks = pd.DataFrame(peak_details)
+
+            # 구역별 비교 멀티 라인 차트
+            base_area = alt.Chart(df_area.reset_index()).encode(
+                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M'), title='시간'),
+                y=alt.Y('이동평균:Q', title="구역별 체류 인원 (이동평균)"),
+                color='구역:N'
+            ).properties(height=350)
+            
+            line = base_area.mark_line(strokeWidth=2.5)
+            
+            if not df_area_peaks.empty:
+                rules = alt.Chart(df_area_peaks).mark_rule(strokeDash=[3,3]).encode(x='시간:T', color='구역:N')
+                text = alt.Chart(df_area_peaks).mark_text(dy=-10, fontWeight='bold', fontSize=10).encode(
+                    x='시간:T', y='이동평균:Q', text='피크단계:N', color='구역:N'
+                )
+                st.altair_chart(line + rules + text, use_container_width=True)
+            else:
+                st.altair_chart(line, use_container_width=True)
+            
+            # 구역별 피크 타임 요약 테이블
+            st.write("#### 📋 선택 구역별 피크 타임 요약")
+            if not df_area_peaks.empty:
+                df_peaks_display = df_area_peaks.copy()
+                df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
+                pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
+                st.dataframe(pivot_df, use_container_width=True)
+            else:
+                st.info("선택된 구역의 피크 데이터가 충분하지 않습니다.")
+        else:
+            st.warning("⚠️ 비교 분석할 구역을 최소 1개 이상 선택해 주세요.")
 
         # 구역별 권고 상세 표
         st.divider()
         st.subheader("📋 구역별 인력 배치 및 운영 권고 명세서")
         
-        # 가장 최근 시점 기준으로 표 생성
         latest_counts = past_time_data[list(past_time_data.keys())[-1]]['counts'] if past_time_data else {}
         detailed_data = []
         for area in sorted(latest_counts.keys()):
@@ -296,7 +329,6 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
     > **[시스템 아키텍처 검증 노트]** 본 장표는 직전 주 동일 요일 수집 데이터 기반의 **시계열 회귀 예측치**와 당일 실측된 **Ground Truth(실제 데이터)** 간의 잔차(Residual)를 분석하여 모델의 예측 유효성을 평가합니다.
     """)
     
-    # 가상 검증 데이터 생성 (요청하신 대로 검증 기본 틀만 가볍게 구현)
     np.random.seed(42)
     time_idx_val = pd.date_range("2025-10-04 06:00:00", "2025-10-04 22:00:00", freq="30min")
     actual_vals = 320 + 160 * np.sin(np.linspace(0, np.pi, len(time_idx_val))) + np.random.normal(0, 10, len(time_idx_val))
