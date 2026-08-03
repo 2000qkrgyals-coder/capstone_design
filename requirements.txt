@@ -9,3 +9,6 @@ scikit-learn
 joblib
 plotly
 opencv-python-headless
+openai
+google-genai
+streamlit>=1.32
