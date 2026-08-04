@@ -12,6 +12,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)
+
 from ai_helper import (
     build_structured_context,
     deterministic_operation_answer,
