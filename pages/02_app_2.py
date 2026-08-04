@@ -19,7 +19,6 @@ IM_AREAS = {"IM1", "IM2"}
 TYPE_MAP = {}
 UNIT_MAP = {}
 
-<<<<<<< HEAD
 for counter in COUNTERS:
     if counter == "A":
         TYPE_MAP[counter] = "프리미엄 체크인"
