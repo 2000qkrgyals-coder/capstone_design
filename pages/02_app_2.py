@@ -458,7 +458,6 @@ def calc_im_gates(people):
 
 
 def calc_im_gates(area, people):
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
     people = float(people)
 
     if people <= 0:
