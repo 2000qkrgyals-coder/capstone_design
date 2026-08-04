@@ -12,7 +12,6 @@ DATA_PATH = BASE_DIR / "operation_dashboard_data.csv.gz"
 COUNTERS = list("ABCDEFGHIJKLMN")
 AREA_LIST = COUNTERS + ["IM1", "IM2"]
 AREAS = ["전체"] + AREA_LIST
-=======
 
 SELF_COUNTERS = {"B", "F", "G", "L"}
 IM_AREAS = {"IM1", "IM2"}
