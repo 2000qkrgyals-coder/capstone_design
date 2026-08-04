@@ -61,14 +61,6 @@ DATA_DIR = BASE_DIR / "data"
 OPERATION_PATH = DATA_DIR / "operation_dashboard_sep2025.csv.gz"
 FLIGHT_PATH = DATA_DIR / "flight_counter_sep2025.csv"
 
-st.set_page_config(
-    page_title="ICN T2 가상 운영 시나리오 & AI 의사결정",
-    page_icon="✈️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-
 # -----------------------------------------------------------------------------
 # Visual system
 # -----------------------------------------------------------------------------
