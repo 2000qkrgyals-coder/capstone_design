@@ -15,7 +15,6 @@ AREAS = ["전체"] + AREA_LIST
 <<<<<<< HEAD
 =======
 
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
 SELF_COUNTERS = {"B", "F", "G", "L"}
 IM_AREAS = {"IM1", "IM2"}
 
