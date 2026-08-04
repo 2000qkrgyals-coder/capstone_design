@@ -5,16 +5,12 @@ from typing import Dict, List, Mapping, Optional, Tuple
 import json
 import math
 import os
-import sys
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-)
 
 from ai_helper import (
     build_structured_context,
