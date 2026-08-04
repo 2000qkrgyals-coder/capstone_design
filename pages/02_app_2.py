@@ -94,7 +94,7 @@ st.markdown(
     """
 <style>
 .block-container {
-<<<<<<< HEAD
+ HEAD
     padding-top: 1.6rem;
     padding-bottom: 2.5rem;
 }
@@ -429,7 +429,7 @@ st.markdown(
 }
 .section-gap {
     margin-top: 16px;
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 }
 </style>
     """,
@@ -439,7 +439,7 @@ st.markdown(
 
 def ceil_div(value, base):
     value = float(value)
-<<<<<<< HEAD
+ HEAD
 
     if value <= 0:
         return 0
@@ -460,7 +460,7 @@ def calc_im_gates(area, people):
     if people <= 0:
         return 0
 
-<<<<<<< HEAD
+ HEAD
     gates = ceil_div(
         people,
         IM_PEOPLE_PER_GATE,
@@ -492,7 +492,7 @@ def calc_im_support_staff(gates):
 
     if gates <= 0:
         return 0
-<<<<<<< HEAD
+ HEAD
 
     if gates <= 3:
         return 1
@@ -515,7 +515,7 @@ def recalc_im_rows(df):
     if "구역" not in df.columns:
         return df
 
-<<<<<<< HEAD
+ HEAD
     mask = df["구역"].isin(
         IM_AREAS
     )
@@ -559,7 +559,7 @@ def recalc_im_rows(df):
 
         df.at[idx, "계획기본직원수"] = plan_gates
         df.at[idx, "계획지원직원수"] = plan_support
-<<<<<<< HEAD
+ HEAD
         df.at[idx, "계획총직원수"] = (
             plan_gates
             + plan_support
@@ -638,7 +638,7 @@ def recalc_im_rows(df):
 
 @st.cache_resource(show_spinner=False)
 def load_data(file_mtime):
-<<<<<<< HEAD
+ HEAD
     _ = file_mtime
 
     df = pd.read_csv(
@@ -659,7 +659,7 @@ def load_data(file_mtime):
 
     for col in NUMERIC_COLS:
         if col in df.columns:
-<<<<<<< HEAD
+ HEAD
             df[col] = pd.to_numeric(
                 df[col],
                 errors="coerce",
@@ -684,7 +684,7 @@ def load_data(file_mtime):
 
 def fmt_num(value):
     try:
-<<<<<<< HEAD
+ HEAD
         return (
             f"{int(round(float(value))):,}"
         )
@@ -698,7 +698,7 @@ def fmt_num(value):
 
 def fmt_signed(value):
     try:
-<<<<<<< HEAD
+ HEAD
         return (
             f"{int(round(float(value))):+,}"
         )
@@ -712,7 +712,7 @@ def fmt_signed(value):
 
 
 def minute_to_hhmm(minute):
-<<<<<<< HEAD
+ HEAD
     minute = max(
         0,
         min(
@@ -808,7 +808,7 @@ def area_suffix(area):
 def unit_suffix(unit):
     if unit == "기기":
         return "대"
-<<<<<<< HEAD
+ HEAD
 
 =======
 
@@ -818,7 +818,7 @@ def unit_suffix(unit):
 def axis_name(area):
     if area == "전체":
         return "필요 운영 수"
-<<<<<<< HEAD
+ HEAD
 
     if area in SELF_COUNTERS:
         return "필요 기기 수"
@@ -838,7 +838,7 @@ def axis_name(area):
 def keep_rate(area):
     if area == "A":
         return 0.70
-<<<<<<< HEAD
+ HEAD
 
     if (
         area in SELF_COUNTERS
@@ -869,13 +869,13 @@ def estimate_staff_from_units(
 
 def estimate_staff_from_units(area, units):
     units = int(max(0, units))
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     if units <= 0:
         return 0
 
     if area == "A":
-<<<<<<< HEAD
+ HEAD
         return (
             units
             + (
@@ -937,14 +937,14 @@ def estimate_staff_from_units(area, units):
         support = 3
 
     return units + support
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
 
 def add_recommendation_columns(rows):
     rows = rows.copy()
 
     decisions = []
-<<<<<<< HEAD
+ HEAD
     final_units_list = []
     adjust_units = []
     final_staff_list = []
@@ -952,13 +952,13 @@ def add_recommendation_columns(rows):
     recommended_units = []
     adjust_units = []
     recommended_staff = []
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     adjust_staff = []
 
     for _, row in rows.iterrows():
         area = row["구역"]
 
-<<<<<<< HEAD
+ HEAD
         plan_units = int(
             row["계획오픈수"]
         )
@@ -987,17 +987,14 @@ def add_recommendation_columns(rows):
         sensor_staff = int(row["실시간총직원수"])
 
         diff = sensor_units - plan_units
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
         if plan_units <= 0:
             if sensor_units > 0:
                 decision = "추가 필요"
                 final_units = sensor_units
                 final_staff = sensor_staff
-<<<<<<< HEAD
 
-=======
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
             else:
                 decision = "계획 유지"
                 final_units = 0
@@ -1009,7 +1006,7 @@ def add_recommendation_columns(rows):
             final_staff = sensor_staff
 
         elif diff <= -2:
-<<<<<<< HEAD
+ HEAD
             minimum_units = math.ceil(
                 plan_units
                 * keep_rate(area)
@@ -1037,7 +1034,7 @@ def add_recommendation_columns(rows):
             if final_units < plan_units:
                 decision = "감축 검토"
                 final_staff = estimate_staff_from_units(area, final_units)
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
             else:
                 decision = "계획 유지"
                 final_units = plan_units
@@ -1048,7 +1045,7 @@ def add_recommendation_columns(rows):
             final_units = plan_units
             final_staff = plan_staff
 
-<<<<<<< HEAD
+ HEAD
         decisions.append(
             decision
         )
@@ -1186,12 +1183,12 @@ def fill_snapshot_defaults(rows):
     rows["상태"] = rows["상태"].fillna("계획 유지")
     rows["권고"] = rows["권고"].fillna("계획 유지")
     rows["IM판단"] = rows["IM판단"].fillna("")
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     return rows
 
 
-<<<<<<< HEAD
+ HEAD
 def current_snapshot(
     df,
     date,
@@ -1275,12 +1272,12 @@ def current_snapshot(df, date, time_value, area):
 
     if area != "전체":
         rows = rows[rows["구역"] == area].copy()
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     return rows
 
 
-<<<<<<< HEAD
+ HEAD
 def day_series(
     df,
     date,
@@ -1290,7 +1287,7 @@ def day_series(
 ):
 =======
 def day_series(df, date, area, start_min, end_min):
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     day = df[
         (df["일자"] == date)
         & (df["분"] >= start_min)
@@ -1298,7 +1295,7 @@ def day_series(df, date, area, start_min, end_min):
     ].copy()
 
     if area != "전체":
-<<<<<<< HEAD
+ HEAD
         day = day[
             day["구역"] == area
         ].copy()
@@ -1404,12 +1401,12 @@ def get_live_end_minute(selected_time):
 def get_live_end_minute(selected_time):
     start_min, end_min, _, _ = graph_window(selected_time)
     selected_min = hhmm_to_minute(selected_time)
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     if "live_elapsed" not in st.session_state:
         st.session_state["live_elapsed"] = 0
 
-<<<<<<< HEAD
+ HEAD
     live_end = (
         selected_min
         + int(
@@ -1636,13 +1633,13 @@ def calc_y_dtick(y_max):
 
 
 def draw_line_chart(chart, title_text, y_title):
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     fig = px.line(
         chart,
         x="분",
         y="필요수",
         color="구분",
-<<<<<<< HEAD
+ HEAD
         custom_data=[
             "시각",
             "구분",
@@ -1701,13 +1698,12 @@ def draw_line_chart(chart, title_text, y_title):
             "시각=%{customdata[0]}<br>"
             "구분=%{customdata[1]}<br>"
             f"{y_title}=%{{y:.0f}}<extra></extra>"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
         ),
     )
 
     fig.update_layout(
         title=title_text,
-<<<<<<< HEAD
+ HEAD
         height=410,
         margin=dict(
             l=10,
@@ -1718,7 +1714,7 @@ def draw_line_chart(chart, title_text, y_title):
 =======
         height=430,
         margin=dict(l=10, r=10, t=42, b=10),
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
         legend_title_text="",
         xaxis_title="",
         yaxis_title=y_title,
@@ -1732,21 +1728,21 @@ def draw_line_chart(chart, title_text, y_title):
     )
 
     fig.update_yaxes(
-<<<<<<< HEAD
+ HEAD
         range=[
             0,
             y_top,
         ],
 =======
         range=[0, y_top],
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
         tickmode="linear",
         dtick=dtick,
         tickformat="d",
         rangemode="tozero",
     )
 
-<<<<<<< HEAD
+ HEAD
     st.plotly_chart(
         fig,
         width="stretch",
@@ -2121,7 +2117,6 @@ def draw_current_bar(current):
 
     st.plotly_chart(fig, width="stretch")
 
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
 
 def operation_table_off(current):
     table = current[
@@ -2137,7 +2132,7 @@ def operation_table_off(current):
         ]
     ].copy()
 
-<<<<<<< HEAD
+ HEAD
     table = table.sort_values(
         [
             "계획오픈수",
@@ -2151,7 +2146,7 @@ def operation_table_off(current):
     table = table.sort_values(["계획오픈수", "계획총직원수"], ascending=False)
 
     table = table.rename(
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
         columns={
             "계획수요": "계획 수요",
             "계획오픈수": "계획 필요",
@@ -2161,7 +2156,7 @@ def operation_table_off(current):
         }
     )
 
-<<<<<<< HEAD
+ HEAD
 
 st.markdown(
     (
@@ -2382,12 +2377,12 @@ with st.sidebar:
     selected_date = st.selectbox("일자", dates, index=0)
 
     selected_area = st.selectbox("구역", AREAS, index=0)
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     selected_time = st.selectbox(
         "데이터 기준 시각",
         times,
-<<<<<<< HEAD
+ HEAD
         index=(
             times.index("08:00")
             if "08:00" in times
@@ -2395,26 +2390,26 @@ with st.sidebar:
         ),
 =======
         index=times.index("08:00") if "08:00" in times else 0,
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     )
 
     mode = st.radio(
         "표시 방식",
-<<<<<<< HEAD
+ HEAD
         [
             "OFF",
             "LIVE",
         ],
 =======
         ["OFF", "LIVE"],
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
         index=0,
     )
 
     refresh_seconds = 20
 
     if mode == "LIVE":
-<<<<<<< HEAD
+ HEAD
         refresh_seconds = st.selectbox(
             "LIVE 갱신 간격",
             [
@@ -2462,12 +2457,12 @@ session_key = f"{selected_date}|{selected_area}|{selected_time}|{mode}"
 
 if st.session_state.get("session_key") != session_key:
     st.session_state["session_key"] = session_key
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     st.session_state["live_elapsed"] = 0
 
 
 def render_off_view():
-<<<<<<< HEAD
+ HEAD
     (
         chart,
         window_label,
@@ -2562,12 +2557,12 @@ def render_off_view():
         fourth_title = "구역 상태"
         fourth_value = "운영 필요" if plan_units > 0 else "운영 없음"
         fourth_suffix = ""
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-<<<<<<< HEAD
+ HEAD
         metric_card(
             "계획 수요",
             fmt_num(
@@ -2678,7 +2673,7 @@ def render_off_view():
 
     else:
         row = current.iloc[0]
-<<<<<<< HEAD
+ HEAD
 
         suffix = unit_suffix(
             row["단위"]
@@ -2701,7 +2696,7 @@ def render_off_view():
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-<<<<<<< HEAD
+ HEAD
             metric_card(
                 "계획 수요",
                 fmt_num(
@@ -3076,7 +3071,7 @@ def render_live_view():
 
     else:
         row = current.iloc[0]
-<<<<<<< HEAD
+ HEAD
 
         suffix = unit_suffix(
             row["단위"]
@@ -3107,7 +3102,7 @@ def render_live_view():
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-<<<<<<< HEAD
+ HEAD
             metric_card(
                 "계획 수요",
                 fmt_num(
@@ -3259,7 +3254,7 @@ def render_live_view():
 
 if mode == "OFF":
     render_off_view()
-<<<<<<< HEAD
+ HEAD
 
 else:
     if not hasattr(
