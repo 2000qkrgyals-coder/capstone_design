@@ -486,7 +486,6 @@ def calc_im_gates(area, people):
 
     gates = max(IM_MIN_ACTIVE_GATES, gates)
     gates = min(IM_MAX_GATES, gates)
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
 
     return int(gates)
 
@@ -509,7 +508,7 @@ def calc_im_support_staff(gates):
         return 1
     if gates <= 5:
         return 2
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     return 3
 
 
@@ -554,8 +553,7 @@ def recalc_im_rows(df):
 
         plan_support = calc_im_support_staff(plan_gates)
         sensor_support = calc_im_support_staff(sensor_gates)
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
-
+        
         df.at[idx, "유형"] = "출국장 진입"
         df.at[idx, "단위"] = "출입문"
 
@@ -636,7 +634,7 @@ def recalc_im_rows(df):
             df.at[idx, "IM판단"] = "기본 개방 수준"
         else:
             df.at[idx, "IM판단"] = "출입문 대기 수요 없음"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     return df
 
@@ -653,7 +651,7 @@ def load_data(file_mtime):
     )
 =======
     df = pd.read_csv(DATA_PATH, encoding="utf-8-sig", compression="infer")
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     df["일자"] = df["일자"].astype(str)
     df["구역"] = df["구역"].astype(str)
@@ -682,7 +680,7 @@ def load_data(file_mtime):
 
     df = df[df["일자"].str.startswith("2025-")]
     df = df[df["구역"].isin(AREA_LIST)]
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
 
     return df
 
@@ -696,7 +694,7 @@ def fmt_num(value):
 
 =======
         return f"{int(round(float(value))):,}"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     except Exception:
         return str(value)
 
@@ -711,7 +709,7 @@ def fmt_signed(value):
 =======
         v = int(round(float(value)))
         return f"{v:+,}"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     except Exception:
         return str(value)
 
@@ -808,7 +806,6 @@ def area_suffix(area):
     if area in SELF_COUNTERS:
         return "대"
     return "개"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
 
 
 def unit_suffix(unit):
@@ -817,7 +814,7 @@ def unit_suffix(unit):
 <<<<<<< HEAD
 
 =======
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     return "개"
 
 
@@ -837,7 +834,7 @@ def axis_name(area):
         return "필요 기기 수"
     if area in IM_AREAS:
         return "필요 출입문 수"
->>>>>>> 7be5863a12c60f73e0be2a0bd8d6f21025ac1978
+
     return "필요 창구 수"
 
 
