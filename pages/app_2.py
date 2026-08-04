@@ -95,13 +95,6 @@ NUMERIC_COLS = [
     "직원차이",
 ]
 
-
-st.set_page_config(
-    page_title="T2 운영 최적화 수정 시스템",
-    layout="wide",
-)
-
-
 st.markdown(
     """
 <style>
