@@ -11,6 +11,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+# pages/app2.py 상단
+from pathlib import Path
+import sys
+
+# 프로젝트 루트(최상위 폴더)를 경로에 추가
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
+# 이제 modules 폴더 안에 있는 파일에서 함수를 불러옵니다.
+from modules.ai_helper import *
+from modules.core import *
+from modules.simulation import *
+from modules.validate_data import *
+
+import streamlit as st
 
 from ai_helper import (
     build_structured_context,
