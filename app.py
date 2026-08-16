@@ -6,6 +6,20 @@ import streamlit as st
 import scipy.signal as signal
 import altair as alt
 
+# app.py
+import streamlit as st
+
+# st.Page를 사용해 페이지 경로와 보여줄 이름을 매칭합니다.
+pg = st.navigation(
+    [
+        st.Page("app.py", title="메인 화면", icon="🏠"),
+        st.Page("pages/app2.py", title="T2 운영 최적화 수정 시스템", icon="📈"), # 👈 여기서 이름 변경!
+        st.Page("pages/app3.py", title="가상 운영 시나리오 & AI 의사결정 지원", icon="⚙️"), # 👈 여기서 이름 변경!
+    ]
+)
+
+pg.run()
+
 # --- [시스템 설정] ---
 AREA_FILE_PATH = "terminal_areas_grouped_2.csv"         
 BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"         
