@@ -184,7 +184,7 @@ def build_baseline_inputs(
         )
 
     # 기준 체크인 처리량은 결합 시뮬레이션의 하류(IM) 전이를 계산할 때 사용한다.
-    from simulation import simulate_single_area
+    from modules.simulation import simulate_single_area
     for area in CHECKIN_AREAS:
         f = simulate_single_area(
             arrivals=arrivals[area],
