@@ -3,7 +3,7 @@ import streamlit as st
 # 1. 사이드바 페이지 리스트 정의 (자기 자신 app.py는 포함하지 않음)
 pg = st.navigation(
     [
-        st.Page("pages/01_app_1.py", title="메인 화면", icon="🏠")
+        st.Page("pages/01_app_1.py", title="메인 화면", icon="🏠"),
         st.Page("pages/02_app_2.py", title="T2 운영 최적화 수정 시스템", icon="📈"),
         st.Page("pages/03_app_3.py", title="가상 운영 시나리오 & AI 의사결정 지원", icon="⚙️"),
     ]
