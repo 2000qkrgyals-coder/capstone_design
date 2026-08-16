@@ -6,9 +6,6 @@ import streamlit as st
 import scipy.signal as signal
 import altair as alt
 
-# app.py
-import streamlit as st
-
 # st.Page를 사용해 페이지 경로와 보여줄 이름을 매칭합니다.
 pg = st.navigation(
     [
