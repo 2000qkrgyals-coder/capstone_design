@@ -7,7 +7,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from simulation import (
+from modules.simulation import (
     ALL_AREAS,
     AREA_TYPES,
     CHECKIN_AREAS,
