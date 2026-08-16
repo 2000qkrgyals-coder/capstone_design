@@ -10,8 +10,8 @@ import altair as alt
 pg = st.navigation(
     [
         st.Page("app.py", title="메인 화면", icon="🏠"),
-        st.Page("pages/app2.py", title="T2 운영 최적화 수정 시스템", icon="📈"), # 👈 여기서 이름 변경!
-        st.Page("pages/app3.py", title="가상 운영 시나리오 & AI 의사결정 지원", icon="⚙️"), # 👈 여기서 이름 변경!
+        st.Page("pages/02_app_2.py", title="T2 운영 최적화 수정 시스템", icon="📈"), # 👈 여기서 이름 변경!
+        st.Page("pages/03_app_3.py", title="가상 운영 시나리오 & AI 의사결정 지원", icon="⚙️"), # 👈 여기서 이름 변경!
     ]
 )
 
