@@ -109,17 +109,17 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 컴포넌트 배경 흰색 제거 및 다크화 */
-        .stMultiSelect, div[data-baseweb="select"] {
+        /* 멀티셀렉트 컴포넌트 자연스러운 다크 테마 통합 (렉 현상 및 이질감 완벽 제거) */
+        .stMultiSelect [data-baseweb="select"] {
             background-color: #111827 !important;
-            border-color: #334155 !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
         }
-        div[data-baseweb="select"] > div {
-            background-color: #111827 !important;
-            border-color: #334155 !important;
+        .stMultiSelect [data-baseweb="select"] div {
+            background-color: transparent !important;
         }
         .stMultiSelect input {
-            background-color: #111827 !important;
             color: #f8fafc !important;
         }
         
@@ -127,6 +127,7 @@ st.markdown("""
         [data-baseweb="menu"] {
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
+            border-radius: 8px !important;
         }
         [data-baseweb="menu"] ul, [data-baseweb="menu"] li {
             background-color: #111827 !important;
@@ -141,6 +142,7 @@ st.markdown("""
         span[data-baseweb="tag"] {
             background-color: #2563eb !important;
             color: #ffffff !important;
+            border-radius: 4px !important;
         }
 
         /* 경고 및 정보 박스 디자인 개선 */
