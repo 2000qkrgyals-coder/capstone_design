@@ -109,14 +109,15 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 선택 바 영역 및 내부 래퍼 흰색 배경 완벽 차단 */
+        /* 멀티셀렉트 선택 박스(컨트롤러) 자체의 흰색 배경 및 기본 테마 완전 차단 */
         .stMultiSelect div[data-baseweb="select"] {
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
         }
-        .stMultiSelect div[data-baseweb="select"] > div {
-            background-color: #111827 !important;
+        .stMultiSelect div[data-baseweb="select"] div {
+            background-color: transparent !important;
+            color: #f8fafc !important;
         }
         .stMultiSelect div[data-baseweb="select"]:hover {
             border-color: #2563eb !important;
@@ -146,7 +147,7 @@ st.markdown("""
             color: #ffffff !important;
         }
         
-        /* 멀티셀렉트 태그(A, B 등 선택된 구역) 백그라운드 컬러 스타일링 */
+        /* 선택된 구역 태그(A, B 등) 디자인 */
         .stMultiSelect span[data-baseweb="tag"] {
             background-color: #2563eb !important;
             color: #ffffff !important;
