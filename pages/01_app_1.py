@@ -78,15 +78,35 @@ st.markdown("""
             font-weight: 700 !important;
         }
         
-        /* 데이터프레임(테이블) 영역 전체 다크 테마 커스텀 강제 적용 */
-        [data-testid="stDataFrame"] {
+        /* 커스텀 관제 테이블 디자인 */
+        .ioc-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #0b0f19;
+            color: #f8fafc;
             border: 1px solid #1e293b;
             border-radius: 8px;
             overflow: hidden;
-            background-color: #0b0f19;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            margin-bottom: 20px;
         }
-        [data-testid="stDataFrame"] iframe {
-            background-color: #0b0f19 !important;
+        .ioc-table th {
+            background-color: #111827;
+            color: #94a3b8;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e293b;
+            letter-spacing: 0.05em;
+        }
+        .ioc-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #111827;
+            color: #f8fafc;
+        }
+        .ioc-table tr:hover {
+            background-color: #111827;
         }
         
         /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 */
@@ -99,7 +119,7 @@ st.markdown("""
             background-color: #111827 !important;
         }
         
-        /* 멀티셀렉트 태그(선택된 구역 아이템들) 백그라운드 컬러 스타일링 */
+        /* 멀티셀렉트 태그 백그라운드 컬러 스타일링 */
         span[data-baseweb="tag"] {
             background-color: #2563eb !important;
             color: #ffffff !important;
@@ -224,7 +244,6 @@ area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(t
 if menu == "🚨 통합 관제 상황판 (Dashboard)":
     st.title("🛡️ 인천공항 T2 3층 통합 운영 상황판 (IOC Dashboard)")
     
-    # 관제 상태 정보 라인 (배경이 깔끔한 인라인 카드형 마크다운 스타일)
     st.markdown(f"""
         <div style="background-color: #111827; padding: 10px 16px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #94a3b8; font-size: 0.9rem;">📅 현재 관제 일자: <strong style="color: #f8fafc;">{target_date_str}</strong></span>
@@ -253,7 +272,6 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
         max_area = max(filtered_counts, key=filtered_counts.get) if filtered_counts else "없음"
         norm_ratio = (1 - (len(urgent_areas) / len(filtered_counts))) * 100 if filtered_counts else 100
 
-        # 높이가 완벽히 일치하는 5개 메트릭 카드 블록
         col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("총 체류 여객", f"{total_people:,} 명")
         col2.metric("혼잡 구역 수", f"{len(urgent_areas)} 곳", delta="주의 대상" if urgent_areas else "양호", delta_color="inverse")
@@ -423,8 +441,21 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             if not df_area_peaks.empty:
                 df_peaks_display = df_area_peaks.copy()
                 df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
-                pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
-                st.dataframe(pivot_df, use_container_width=True)
+                pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간').reset_index()
+                
+                # HTML 커스텀 다크 테이블 렌더링
+                html_table = "<table class='ioc-table'><thead><tr>"
+                for col in pivot_df.columns:
+                    html_table += f"<th>{col}</th>"
+                html_table += "</tr></thead><tbody>"
+                for _, row in pivot_df.iterrows():
+                    html_table += "<tr>"
+                    for val in row:
+                        display_val = "" if pd.isna(val) else str(val)
+                        html_table += f"<td>{display_val}</td>"
+                    html_table += "</tr>"
+                html_table += "</tbody></table>"
+                st.markdown(html_table, unsafe_allow_html=True)
             else:
                 st.info("선택된 구역의 피크 데이터가 충분하지 않습니다.")
         else:
@@ -449,7 +480,19 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             })
         
         df_display = pd.DataFrame(detailed_data)
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        
+        # HTML 커스텀 다크 테이블 렌더링 (구역별 인력 배치 명세서)
+        html_table_staff = "<table class='ioc-table'><thead><tr>"
+        for col in df_display.columns:
+            html_table_staff += f"<th>{col}</th>"
+        html_table_staff += "</tr></thead><tbody>"
+        for _, row in df_display.iterrows():
+            html_table_staff += "<tr>"
+            for val in row:
+                html_table_staff += f"<td>{val}</td>"
+            html_table_staff += "</tr>"
+        html_table_staff += "</tbody></table>"
+        st.markdown(html_table_staff, unsafe_allow_html=True)
 
 # ==========================================
 # 3. 🔍 모델 예측 및 검증 (Validation)
