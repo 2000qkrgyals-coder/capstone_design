@@ -188,7 +188,7 @@ st.markdown("""
             background-color: #1d4ed8;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
         }
-        /* --- [st.date_input 캘린더 빈 셀 흰색 배경 최종 해결] --- */
+        /* --- [st.date_input 달력 빈 행/셀 흰색 배경 완벽 차단 및 다크 고정] --- */
         
         /* 1. 날짜 입력 필드 본체 */
         [data-baseweb="input"] {
@@ -209,7 +209,7 @@ st.markdown("""
             box-shadow: 0 0 0 1px #2563eb !important;
         }
 
-        /* 2. 팝오버 최상위 레이어 및 캘린더 전체 배경 다크화 */
+        /* 2. 팝오버 최상위 레이어 및 캘린더 전체 틀 다크화 */
         div[role="presentation"],
         div[role="presentation"] > div,
         div[data-baseweb="popover"],
@@ -223,7 +223,9 @@ st.markdown("""
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
         }
 
-        /* 3. 캘린더 내부 모든 테이블 구조 및 빈 칸 포함 셀 배경 다크화 */
+        /* 3. 캘린더 내부의 모든 테이블, 행, 셀, 영역의 기본 배경을 강제로 #0b0f19로 설정 */
+        [data-baseweb="calendar"],
+        [data-baseweb="calendar"] *,
         [data-baseweb="calendar"] table,
         [data-baseweb="calendar"] tbody,
         [data-baseweb="calendar"] tr,
@@ -237,28 +239,18 @@ st.markdown("""
             color: #f8fafc !important;
         }
 
-        /* 4. [핵심] 날짜가 없는 빈 테이블 셀(패딩 셀)의 흰색 배경 강제 차단 */
-        [data-baseweb="calendar"] td:not(:has(button)) {
-            background-color: #0b0f19 !important;
-            background: #0b0f19 !important;
-        }
-        [data-baseweb="calendar"] td[aria-disabled="true"],
-        [data-baseweb="calendar"] td:empty {
-            background-color: #0b0f19 !important;
-            background: #0b0f19 !important;
-        }
-
-        /* 5. 요일 헤더 텍스트 색상 */
+        /* 4. 요일 헤더 텍스트 색상 */
         [data-baseweb="calendar"] th {
             color: #94a3b8 !important;
         }
 
-        /* 6. 날짜 버튼 및 호버 효과 */
+        /* 5. 날짜 버튼 및 호버 효과 (버튼만 투명 배경 유지 및 호버 시 다크 그레이) */
         [data-baseweb="calendar"] button {
             background-color: transparent !important;
             background: transparent !important;
             color: #f8fafc !important;
             border-radius: 6px !important;
+            border: none !important;
         }
         [data-baseweb="calendar"] button:hover {
             background-color: #1e293b !important;
@@ -266,14 +258,14 @@ st.markdown("""
             color: #ffffff !important;
         }
 
-        /* 7. 선택된 날짜 (Selected Date) 강조 */
+        /* 6. 선택된 날짜 (Selected Date) 강조 */
         [data-baseweb="calendar"] [aria-selected="true"] {
             background-color: #2563eb !important;
             background: #2563eb !important;
             color: #ffffff !important;
         }
 
-        /* 8. 월/연도 선택 드롭다운 팝오버 메뉴 */
+        /* 7. 월/연도 선택 드롭다운 팝오버 메뉴 */
         div[data-baseweb="menu"], 
         div[data-baseweb="menu"] div,
         div[data-baseweb="menu"] ul,
