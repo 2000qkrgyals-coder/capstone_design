@@ -20,10 +20,16 @@ st.set_page_config(
 # --- [디자인 시스템: 다크/프로페셔널 관제 스타일 CSS 적용] ---
 st.markdown("""
     <style>
-        .stMetric { background-color: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-        .stMetric label { color: #94a3b8 !important; font-weight: 600; }
-        .stMetric [data-testid="stMetricValue"] { color: #f8fafc !important; }
-        h1, h2, h3 { color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
+        .stApp { background-color: #090d16; color: #e2e8f0; }
+        [data-testid="stSidebar"] { background-color: #0f172a; }
+        .stMetric { 
+            background: linear-gradient(135deg, #111827 0%, #0f172a 100%); 
+            padding: 16px; border-radius: 6px; border: 1px solid #1e293b; 
+        }
+        .stMetric label { color: #94a3b8 !important; font-size: 0.8rem !important; font-weight: 700 !important; }
+        .stMetric [data-testid="stMetricValue"] { color: #f8fafc !important; font-family: 'Consolas', monospace; }
+        h1, h2, h3 { color: #f8fafc; font-weight: 700; }
+        [data-testid="stDataFrame"] { border: 1px solid #1e293b; border-radius: 6px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -96,6 +102,10 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
         return cv2.bitwise_and(heatmap_color, heatmap_color, mask=alpha)
     return np.zeros((height, width, 3), dtype=np.uint8)
 
+def apply_dark_theme(chart):
+    return chart.configure(background='#0f172a').configure_axis(
+        domainColor='#334155', tickColor='#334155', labelColor='#94a3b8', titleColor='#cbd5e1'
+    ).configure_legend(labelColor='#94a3b8', titleColor='#cbd5e1')
 # --- [사이드바 구성: 관제 시스템 콘솔] ---
 
 menu = st.sidebar.radio(
@@ -122,6 +132,12 @@ area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(t
 if menu == "🚨 통합 관제 상황판 (Dashboard)":
     st.title("🛡️ 인천공항 T2 3층 통합 운영 상황판 (IOC Dashboard)")
     st.markdown(f"**현재 관제 일자:** `{target_date_str}` | **시스템 상태:** `[● ONLINE / SYNCED]`")
+    st.markdown("""
+        <div style="background-color: #111827; padding: 10px 20px; border-radius: 6px; border: 1px solid #1e293b; margin-bottom: 20px;">
+            <span style="color: #ef4444; font-weight: bold; font-family: monospace;">● LIVE MONITORING SYSTEM</span>
+            <span style="color: #64748b; margin-left: 15px; font-size: 0.9rem;">TERMINAL 2 - DEPARTURES 3F IOC</span>
+        </div>
+    """, unsafe_allow_html=True)
     
     if not exists:
         st.error(f"⚠️ [{target_date_str}] 해당 일자의 수집된 세션 데이터가 존재하지 않습니다.")
@@ -222,9 +238,9 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             text = alt.Chart(df_peaks).mark_text(align='left', dx=5, dy=-10, color='#ef4444', fontWeight='bold').encode(
                 x='시간:T', y='이동평균:Q', text='라벨:N'
             )
-            st.altair_chart(chart + rules + text, use_container_width=True)
+            st.altair_chart(apply_dark_theme(chart), use_container_width=True)
         else:
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(apply_dark_theme(chart), use_container_width=True)
 
         st.divider()
         
@@ -281,9 +297,9 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 text = alt.Chart(df_area_peaks).mark_text(dy=-10, fontWeight='bold', fontSize=10).encode(
                     x='시간:T', y='이동평균:Q', text='피크단계:N', color='구역:N'
                 )
-                st.altair_chart(line + rules + text, use_container_width=True)
+                st.altair_chart(apply_dark_theme(chart), use_container_width=True)
             else:
-                st.altair_chart(line, use_container_width=True)
+                st.altair_chart(apply_dark_theme(chart), use_container_width=True)
             
             # 구역별 피크 타임 요약 테이블
             st.write("#### 📋 선택 구역별 피크 타임 요약")
@@ -358,8 +374,7 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
         color=alt.Color('데이터 구분:N', scale=alt.Scale(domain=['실제 측정치 (Actual)', '모델 예측치 (Predicted)'], range=['#2ecc71', '#e74c3c']))
     ).properties(height=380).interactive()
     
-    st.altair_chart(val_chart, use_container_width=True)
-
+    st.altair_chart(apply_dark_theme(chart), use_container_width=True)
 # ==========================================
 # 4. 📡 실시간 센서 파이프라인 (Live)
 # ==========================================
