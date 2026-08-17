@@ -17,13 +17,76 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- [디자인 시스템: 다크/프로페셔널 관제 스타일 CSS 적용] ---
+# --- [디자인 시스템: 고급 다크 프로페셔널 관제 스타일 CSS 적용] ---
 st.markdown("""
     <style>
-        .stMetric { background-color: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-        .stMetric label { color: #94a3b8 !important; font-weight: 600; }
-        .stMetric [data-testid="stMetricValue"] { color: #f8fafc !important; }
-        h1, h2, h3 { color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
+        /* 전체 앱 배경 및 폰트 설정 */
+        .stApp {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* 사이드바 스타일링 */
+        [data-testid="stSidebar"] {
+            background-color: #0f172a;
+            border-right: 1px solid #1e293b;
+        }
+
+        /* 메트릭 카드 커스텀 디자인 */
+        .stMetric { 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 18px; 
+            border-radius: 12px; 
+            border: 1px solid #334155; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+        .stMetric label { 
+            color: #94a3b8 !important; 
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            letter-spacing: 0.05em;
+        }
+        .stMetric [data-testid="stMetricValue"] { 
+            color: #f8fafc !important; 
+            font-weight: 700 !important;
+        }
+
+        /* 헤더 타이틀 스타일 */
+        h1, h2, h3 { 
+            color: #f8fafc !important; 
+            font-family: 'Inter', sans-serif;
+            font-weight: 700 !important;
+        }
+        
+        /* 데이터프레임(테이블) 스타일링 */
+        [data-testid="stDataFrame"] {
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* 경고 및 정보 박스 디자인 개선 */
+        .stAlert {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        /* 버튼 디자인 */
+        .stButton button {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .stButton button:hover {
+            background-color: #2563eb;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -97,7 +160,7 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
     return np.zeros((height, width, 3), dtype=np.uint8)
 
 # --- [사이드바 구성: 관제 시스템 콘솔] ---
-
+st.sidebar.markdown("### ✈️ ICN IOC SYSTEM")
 menu = st.sidebar.radio(
     "관제 시스템 모드 선택", 
     [
@@ -170,10 +233,10 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             st.subheader("📊 실시간 혼잡 Top 5 구역")
             sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
-            st.bar_chart(df_top5.set_index("구역"), color="#ff4b4b", height=380)
+            st.bar_chart(df_top5.set_index("구역"), color="#3b82f6", height=380)
 
 # ==========================================
-# 2. 🗺️ 터미널 구역별 상세 분석 (구역 선택 기능 포함)
+# 2. 🗺️ 터미널 구역별 상세 분석
 # ==========================================
 elif menu == "🗺️ 터미널 구역별 상세 분석":
     st.title("📈 구역별 여객 흐름 및 시계열 트렌드 심층 분석")
@@ -189,7 +252,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             help="노이즈를 제거하고 추세를 파악하기 위한 구간 설정"
         )
         
-        # 전체 인원 흐름 차트 섹션
         st.subheader("📉 터미널 전체 여객 인원 흐름 시계열 분석")
         
         time_trend_data = []
@@ -204,9 +266,16 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
         df_trend['이동평균'] = df_trend['인원'].rolling(window=window_size * 6, min_periods=1).mean()
         
         df_plot = df_trend.reset_index()
-        chart = alt.Chart(df_plot).mark_area(color="#3b82f6", opacity=0.5).encode(
-            x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour'), title='시간 타임라인'), 
-            y=alt.Y('이동평균:Q', title='보정 체류 인원 (명)')
+        chart = alt.Chart(df_plot).mark_area(
+            color=alt.Gradient(
+                gradient='linear',
+                stops=[alt.GradientStop(color='#3b82f6', offset=0), alt.GradientStop(color='#1e293b', offset=1)],
+                x1=1, x2=1, y1=1, y2=0
+            ), 
+            opacity=0.7
+        ).encode(
+            x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', tickCount='hour', labelColor='#94a3b8', titleColor='#f8fafc'), title='시간 타임라인'), 
+            y=alt.Y('이동평균:Q', title='보정 체류 인원 (명)', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc'))
         ).properties(height=280)
 
         peak_data = get_daily_peaks(df_trend)
@@ -228,10 +297,8 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
 
         st.divider()
         
-        # 🔍 특정 구역 상세 선택 분석 (이 부분이 복원되었습니다!)
         st.subheader("🔍 특정 구역 선택 및 상세 시계열 추이 분석")
         
-        # 첫 번째 시점의 키들을 기준으로 구역 목록 추출
         sample_counts = past_time_data[list(past_time_data.keys())[0]]['counts']
         all_areas = sorted([k for k in sample_counts.keys() if k not in ["GH", "IM1", "IM2"]])
         
@@ -257,7 +324,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             df_area = df_area.dropna(subset=['시간']).set_index("시간")
             df_area['이동평균'] = df_area.groupby('구역')['인원'].transform(lambda x: x.rolling(window=window_size * 6, min_periods=1).mean())
             
-            # 구역별 피크 데이터 추출
             peak_details = []
             for area in selected_areas:
                 area_df_subset = df_area[df_area['구역'] == area].copy()
@@ -267,10 +333,9 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             
             df_area_peaks = pd.DataFrame(peak_details)
 
-            # 구역별 비교 멀티 라인 차트
             base_area = alt.Chart(df_area.reset_index()).encode(
-                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M'), title='시간'),
-                y=alt.Y('이동평균:Q', title="구역별 체류 인원 (이동평균)"),
+                x=alt.X('시간:T', axis=alt.Axis(format='%H:%M', labelColor='#94a3b8', titleColor='#f8fafc'), title='시간'),
+                y=alt.Y('이동평균:Q', title="구역별 체류 인원 (이동평균)", axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc')),
                 color='구역:N'
             ).properties(height=350)
             
@@ -285,7 +350,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             else:
                 st.altair_chart(line, use_container_width=True)
             
-            # 구역별 피크 타임 요약 테이블
             st.write("#### 📋 선택 구역별 피크 타임 요약")
             if not df_area_peaks.empty:
                 df_peaks_display = df_area_peaks.copy()
@@ -297,7 +361,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
         else:
             st.warning("⚠️ 비교 분석할 구역을 최소 1개 이상 선택해 주세요.")
 
-        # 구역별 권고 상세 표
         st.divider()
         st.subheader("📋 구역별 인력 배치 및 운영 권고 명세서")
         
@@ -352,10 +415,10 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
         "모델 예측치 (Predicted)": predicted_vals
     }).melt("시간", var_name="데이터 구분", value_name="체류 인원")
     
-    val_chart = alt.Chart(df_val).mark_line(point=True, strokeWidth=2).encode(
-        x=alt.X('시간:T', title='타임라인 (30분 간격)', axis=alt.Axis(format='%H:%M')),
-        y=alt.Y('체류 인원:Q', title='여객 체류 인원 (명)'),
-        color=alt.Color('데이터 구분:N', scale=alt.Scale(domain=['실제 측정치 (Actual)', '모델 예측치 (Predicted)'], range=['#2ecc71', '#e74c3c']))
+    val_chart = alt.Chart(df_val).mark_line(point=True, strokeWidth=2.5).encode(
+        x=alt.X('시간:T', title='타임라인 (30분 간격)', axis=alt.Axis(format='%H:%M', labelColor='#94a3b8', titleColor='#f8fafc')),
+        y=alt.Y('체류 인원:Q', title='여객 체류 인원 (명)', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc')),
+        color=alt.Color('데이터 구분:N', scale=alt.Scale(domain=['실제 측정치 (Actual)', '모델 예측치 (Predicted)'], range=['#10b981', '#f43f5e']))
     ).properties(height=380).interactive()
     
     st.altair_chart(val_chart, use_container_width=True)
