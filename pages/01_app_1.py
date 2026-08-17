@@ -27,13 +27,24 @@ st.markdown("""
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         
-        /* 사이드바 스타일링 및 글자색 강제 지정 (가인성 확보) */
+        /* 사이드바 스타일링 및 글자색 강제 지정 */
         [data-testid="stSidebar"] {
             background-color: #0f172a;
             border-right: 1px solid #1e293b;
         }
         [data-testid="stSidebar"] * {
             color: #f8fafc !important;
+        }
+
+        /* 사이드바 내부 입력 위젯(Date Input 등) 배경 및 테두리 다크화 */
+        [data-testid="stSidebar"] input {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+        }
+        [data-testid="stSidebar"] [data-baseweb="input"] {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
         }
 
         /* 메트릭 카드 커스텀 디자인 */
@@ -67,6 +78,22 @@ st.markdown("""
             border: 1px solid #334155;
             border-radius: 8px;
             overflow: hidden;
+        }
+
+        /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 */
+        [data-baseweb="select"] {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        [data-baseweb="select"] * {
+            color: #f8fafc !important;
+            background-color: #1e293b !important;
+        }
+        
+        /* 멀티셀렉트 태그(선택된 구역 아이템들) 백그라운드 컬러 스타일링 */
+        span[data-baseweb="tag"] {
+            background-color: #3b82f6 !important;
+            color: #ffffff !important;
         }
 
         /* 경고 및 정보 박스 디자인 개선 */
@@ -380,7 +407,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 df_peaks_display = df_area_peaks.copy()
                 df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
                 pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
-                # 💡 theme="dark" 제거 완료
                 st.dataframe(pivot_df, use_container_width=True)
             else:
                 st.info("선택된 구역의 피크 데이터가 충분하지 않습니다.")
@@ -406,7 +432,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             })
         
         df_display = pd.DataFrame(detailed_data)
-        # 💡 theme="dark" 제거 완료
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 # ==========================================
