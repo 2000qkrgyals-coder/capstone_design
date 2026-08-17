@@ -237,7 +237,6 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
             
-            # 다크 테마 적용된 Altair 바 차트
             top5_chart = alt.Chart(df_top5).mark_bar(
                 color="#3b82f6", cornerRadiusTopLeft=4, cornerRadiusTopRight=4
             ).encode(
@@ -381,7 +380,8 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 df_peaks_display = df_area_peaks.copy()
                 df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
                 pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
-                st.dataframe(pivot_df, use_container_width=True, theme="dark")
+                # 💡 theme="dark" 제거 완료
+                st.dataframe(pivot_df, use_container_width=True)
             else:
                 st.info("선택된 구역의 피크 데이터가 충분하지 않습니다.")
         else:
@@ -406,7 +406,8 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             })
         
         df_display = pd.DataFrame(detailed_data)
-        st.dataframe(df_display, use_container_width=True, hide_index=True, theme="dark")
+        # 💡 theme="dark" 제거 완료
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 # ==========================================
 # 3. 🔍 모델 예측 및 검증 (Validation)
