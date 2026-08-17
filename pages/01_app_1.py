@@ -17,53 +17,58 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- [디자인 시스템: 고급 다크 프로페셔널 관제 스타일 CSS 적용] ---
+# --- [디자인 시스템: 극도로 전문적인 하이엔드 관제 스타일 CSS 적용] ---
 st.markdown("""
     <style>
         /* 전체 앱 배경 및 폰트 설정 */
         .stApp {
-            background-color: #0b0f19;
+            background-color: #07090e;
             color: #f1f5f9;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         
         /* 사이드바 스타일링 및 글자색 강제 지정 */
         [data-testid="stSidebar"] {
-            background-color: #0f172a;
+            background-color: #0b0f19;
             border-right: 1px solid #1e293b;
         }
         [data-testid="stSidebar"] * {
             color: #f8fafc !important;
         }
 
-        /* 사이드바 내부 입력 위젯(Date Input 등) 배경 및 테두리 다크화 */
+        /* 사이드바 내부 입력 위젯 배경 및 테두리 다크화 */
         [data-testid="stSidebar"] input {
-            background-color: #1e293b !important;
+            background-color: #111827 !important;
             color: #f8fafc !important;
             border: 1px solid #334155 !important;
         }
         [data-testid="stSidebar"] [data-baseweb="input"] {
-            background-color: #1e293b !important;
+            background-color: #111827 !important;
             border-color: #334155 !important;
         }
 
-        /* 메트릭 카드 커스텀 디자인 */
-        .stMetric { 
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 18px; 
-            border-radius: 12px; 
-            border: 1px solid #334155; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        /* 메트릭 카드 크기 및 높이 완벽 일치 디자인 */
+        [data-testid="stMetric"] { 
+            background: linear-gradient(135deg, #111827 0%, #0b0f19 100%) !important;
+            padding: 16px 20px !important; 
+            border-radius: 10px !important; 
+            border: 1px solid #1e293b !important; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
-        .stMetric label { 
+        [data-testid="stMetric"] label { 
             color: #94a3b8 !important; 
             font-weight: 600 !important;
-            font-size: 0.85rem !important;
+            font-size: 0.78rem !important;
             letter-spacing: 0.05em;
         }
-        .stMetric [data-testid="stMetricValue"] { 
+        [data-testid="stMetric"] [data-testid="stMetricValue"] { 
             color: #f8fafc !important; 
             font-weight: 700 !important;
+            font-size: 1.35rem !important;
         }
 
         /* 헤더 타이틀 스타일 */
@@ -73,40 +78,44 @@ st.markdown("""
             font-weight: 700 !important;
         }
         
-        /* 데이터프레임(테이블) 테두리 */
+        /* 데이터프레임(테이블) 영역 전체 다크 테마 커스텀 강제 적용 */
         [data-testid="stDataFrame"] {
-            border: 1px solid #334155;
+            border: 1px solid #1e293b;
             border-radius: 8px;
             overflow: hidden;
+            background-color: #0b0f19;
         }
-
+        [data-testid="stDataFrame"] iframe {
+            background-color: #0b0f19 !important;
+        }
+        
         /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 */
         [data-baseweb="select"] {
-            background-color: #1e293b !important;
+            background-color: #111827 !important;
             border-color: #334155 !important;
         }
         [data-baseweb="select"] * {
             color: #f8fafc !important;
-            background-color: #1e293b !important;
+            background-color: #111827 !important;
         }
         
         /* 멀티셀렉트 태그(선택된 구역 아이템들) 백그라운드 컬러 스타일링 */
         span[data-baseweb="tag"] {
-            background-color: #3b82f6 !important;
+            background-color: #2563eb !important;
             color: #ffffff !important;
         }
 
         /* 경고 및 정보 박스 디자인 개선 */
         .stAlert {
-            background-color: #1e293b;
-            border: 1px solid #334155;
+            background-color: #111827;
+            border: 1px solid #1e293b;
             color: #f8fafc;
             border-radius: 8px;
         }
         
         /* 버튼 디자인 */
         .stButton button {
-            background-color: #3b82f6;
+            background-color: #2563eb;
             color: white;
             font-weight: 600;
             border-radius: 8px;
@@ -114,8 +123,8 @@ st.markdown("""
             transition: all 0.3s ease;
         }
         .stButton button:hover {
-            background-color: #2563eb;
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+            background-color: #1d4ed8;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -214,7 +223,14 @@ area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(t
 # ==========================================
 if menu == "🚨 통합 관제 상황판 (Dashboard)":
     st.title("🛡️ 인천공항 T2 3층 통합 운영 상황판 (IOC Dashboard)")
-    st.markdown(f"**현재 관제 일자:** `{target_date_str}` | **시스템 상태:** `[● ONLINE / SYNCED]`")
+    
+    # 관제 상태 정보 라인 (배경이 깔끔한 인라인 카드형 마크다운 스타일)
+    st.markdown(f"""
+        <div style="background-color: #111827; padding: 10px 16px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #94a3b8; font-size: 0.9rem;">📅 현재 관제 일자: <strong style="color: #f8fafc;">{target_date_str}</strong></span>
+            <span style="color: #94a3b8; font-size: 0.9rem;">시스템 통신 상태: <strong style="color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 4px;">● ONLINE / SYNCED</strong></span>
+        </div>
+    """, unsafe_allow_html=True)
     
     if not exists:
         st.error(f"⚠️ [{target_date_str}] 해당 일자의 수집된 세션 데이터가 존재하지 않습니다.")
@@ -237,6 +253,7 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
         max_area = max(filtered_counts, key=filtered_counts.get) if filtered_counts else "없음"
         norm_ratio = (1 - (len(urgent_areas) / len(filtered_counts))) * 100 if filtered_counts else 100
 
+        # 높이가 완벽히 일치하는 5개 메트릭 카드 블록
         col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("총 체류 여객", f"{total_people:,} 명")
         col2.metric("혼잡 구역 수", f"{len(urgent_areas)} 곳", delta="주의 대상" if urgent_areas else "양호", delta_color="inverse")
@@ -265,12 +282,12 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
             
             top5_chart = alt.Chart(df_top5).mark_bar(
-                color="#3b82f6", cornerRadiusTopLeft=4, cornerRadiusTopRight=4
+                color="#2563eb", cornerRadiusTopLeft=4, cornerRadiusTopRight=4
             ).encode(
                 x=alt.X('구역:N', sort='-y', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc', labelAngle=0), title='구역'),
                 y=alt.Y('인원:Q', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc'), title='체류 인원 (명)')
             ).properties(height=380).configure(
-                background='#0b0f19',
+                background='#07090e',
                 view=alt.ViewConfig(stroke=None)
             )
             st.altair_chart(top5_chart, use_container_width=True)
@@ -309,7 +326,7 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
         chart = alt.Chart(df_plot).mark_area(
             color=alt.Gradient(
                 gradient='linear',
-                stops=[alt.GradientStop(color='#3b82f6', offset=0), alt.GradientStop(color='#1e293b', offset=1)],
+                stops=[alt.GradientStop(color='#2563eb', offset=0), alt.GradientStop(color='#111827', offset=1)],
                 x1=1, x2=1, y1=1, y2=0
             ), 
             opacity=0.7
@@ -332,12 +349,12 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 x='시간:T', y='이동평균:Q', text='라벨:N'
             )
             final_trend_chart = (chart + rules + text).configure(
-                background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                background='#07090e', view=alt.ViewConfig(stroke=None)
             )
             st.altair_chart(final_trend_chart, use_container_width=True)
         else:
             final_trend_chart = chart.configure(
-                background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                background='#07090e', view=alt.ViewConfig(stroke=None)
             )
             st.altair_chart(final_trend_chart, use_container_width=True)
 
@@ -393,12 +410,12 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                     x='시간:T', y='이동평균:Q', text='피크단계:N', color='구역:N'
                 )
                 area_chart_final = (line + rules + text).configure(
-                    background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                    background='#07090e', view=alt.ViewConfig(stroke=None)
                 )
                 st.altair_chart(area_chart_final, use_container_width=True)
             else:
                 area_chart_final = line.configure(
-                    background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                    background='#07090e', view=alt.ViewConfig(stroke=None)
                 )
                 st.altair_chart(area_chart_final, use_container_width=True)
             
@@ -472,7 +489,7 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
         y=alt.Y('체류 인원:Q', title='여객 체류 인원 (명)', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc')),
         color=alt.Color('데이터 구분:N', scale=alt.Scale(domain=['실제 측정치 (Actual)', '모델 예측치 (Predicted)'], range=['#10b981', '#f43f5e']))
     ).properties(height=380).configure(
-        background='#0b0f19',
+        background='#07090e',
         view=alt.ViewConfig(stroke=None)
     ).interactive()
     
