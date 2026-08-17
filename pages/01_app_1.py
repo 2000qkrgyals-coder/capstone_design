@@ -109,19 +109,18 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 (흰색 배경 원천 차단) */
-        .stMultiSelect [data-baseweb="select"], 
-        .stMultiSelect div[data-baseweb="select"] > div {
+        /* 멀티셀렉트 컴포넌트 배경 흰색 제거 및 다크화 */
+        .stMultiSelect, div[data-baseweb="select"] {
             background-color: #111827 !important;
             border-color: #334155 !important;
         }
-        [data-baseweb="select"] {
+        div[data-baseweb="select"] > div {
             background-color: #111827 !important;
             border-color: #334155 !important;
         }
-        [data-baseweb="select"] * {
+        .stMultiSelect input {
+            background-color: #111827 !important;
             color: #f8fafc !important;
-            background-color: #111827 !important;
         }
         
         /* 멀티셀렉트 드롭다운 팝오버 메뉴 영역 스타일링 */
