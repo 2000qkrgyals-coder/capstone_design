@@ -27,10 +27,13 @@ st.markdown("""
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         
-        /* 사이드바 스타일링 */
+        /* 사이드바 스타일링 및 글자색 강제 지정 (가인성 확보) */
         [data-testid="stSidebar"] {
             background-color: #0f172a;
             border-right: 1px solid #1e293b;
+        }
+        [data-testid="stSidebar"] * {
+            color: #f8fafc !important;
         }
 
         /* 메트릭 카드 커스텀 디자인 */
@@ -59,7 +62,7 @@ st.markdown("""
             font-weight: 700 !important;
         }
         
-        /* 데이터프레임(테이블) 스타일링 */
+        /* 데이터프레임(테이블) 테두리 */
         [data-testid="stDataFrame"] {
             border: 1px solid #334155;
             border-radius: 8px;
@@ -233,7 +236,18 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             st.subheader("📊 실시간 혼잡 Top 5 구역")
             sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
-            st.bar_chart(df_top5.set_index("구역"), color="#3b82f6", height=380)
+            
+            # 다크 테마 적용된 Altair 바 차트
+            top5_chart = alt.Chart(df_top5).mark_bar(
+                color="#3b82f6", cornerRadiusTopLeft=4, cornerRadiusTopRight=4
+            ).encode(
+                x=alt.X('구역:N', sort='-y', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc', labelAngle=0), title='구역'),
+                y=alt.Y('인원:Q', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc'), title='체류 인원 (명)')
+            ).properties(height=380).configure(
+                background='#0b0f19',
+                view=alt.ViewConfig(stroke=None)
+            )
+            st.altair_chart(top5_chart, use_container_width=True)
 
 # ==========================================
 # 2. 🗺️ 터미널 구역별 상세 분석
@@ -291,9 +305,15 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             text = alt.Chart(df_peaks).mark_text(align='left', dx=5, dy=-10, color='#ef4444', fontWeight='bold').encode(
                 x='시간:T', y='이동평균:Q', text='라벨:N'
             )
-            st.altair_chart(chart + rules + text, use_container_width=True)
+            final_trend_chart = (chart + rules + text).configure(
+                background='#0b0f19', view=alt.ViewConfig(stroke=None)
+            )
+            st.altair_chart(final_trend_chart, use_container_width=True)
         else:
-            st.altair_chart(chart, use_container_width=True)
+            final_trend_chart = chart.configure(
+                background='#0b0f19', view=alt.ViewConfig(stroke=None)
+            )
+            st.altair_chart(final_trend_chart, use_container_width=True)
 
         st.divider()
         
@@ -346,16 +366,22 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 text = alt.Chart(df_area_peaks).mark_text(dy=-10, fontWeight='bold', fontSize=10).encode(
                     x='시간:T', y='이동평균:Q', text='피크단계:N', color='구역:N'
                 )
-                st.altair_chart(line + rules + text, use_container_width=True)
+                area_chart_final = (line + rules + text).configure(
+                    background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                )
+                st.altair_chart(area_chart_final, use_container_width=True)
             else:
-                st.altair_chart(line, use_container_width=True)
+                area_chart_final = line.configure(
+                    background='#0b0f19', view=alt.ViewConfig(stroke=None)
+                )
+                st.altair_chart(area_chart_final, use_container_width=True)
             
             st.write("#### 📋 선택 구역별 피크 타임 요약")
             if not df_area_peaks.empty:
                 df_peaks_display = df_area_peaks.copy()
                 df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
                 pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간')
-                st.dataframe(pivot_df, use_container_width=True)
+                st.dataframe(pivot_df, use_container_width=True, theme="dark")
             else:
                 st.info("선택된 구역의 피크 데이터가 충분하지 않습니다.")
         else:
@@ -380,7 +406,7 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             })
         
         df_display = pd.DataFrame(detailed_data)
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        st.dataframe(df_display, use_container_width=True, hide_index=True, theme="dark")
 
 # ==========================================
 # 3. 🔍 모델 예측 및 검증 (Validation)
@@ -419,7 +445,10 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
         x=alt.X('시간:T', title='타임라인 (30분 간격)', axis=alt.Axis(format='%H:%M', labelColor='#94a3b8', titleColor='#f8fafc')),
         y=alt.Y('체류 인원:Q', title='여객 체류 인원 (명)', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc')),
         color=alt.Color('데이터 구분:N', scale=alt.Scale(domain=['실제 측정치 (Actual)', '모델 예측치 (Predicted)'], range=['#10b981', '#f43f5e']))
-    ).properties(height=380).interactive()
+    ).properties(height=380).configure(
+        background='#0b0f19',
+        view=alt.ViewConfig(stroke=None)
+    ).interactive()
     
     st.altair_chart(val_chart, use_container_width=True)
 
