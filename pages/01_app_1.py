@@ -188,9 +188,9 @@ st.markdown("""
             background-color: #1d4ed8;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
         }
-        /* --- [추가/보완] st.date_input (날짜 선택기) 완벽 다크화 --- */
+        /* --- [st.date_input 및 캘린더 다크모드 완벽 동기화] --- */
         
-        /* 1. 날짜 입력 필드 본체 및 테두리 */
+        /* 1. 날짜 입력 필드 본체 */
         [data-baseweb="input"] {
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
@@ -208,32 +208,62 @@ st.markdown("""
             box-shadow: 0 0 0 1px #2563eb !important;
         }
 
-        /* 2. 날짜 선택 시 열리는 캘린더 팝오버 전체 배경 */
+        /* 2. 캘린더 팝오버 최상위 컨테이너 */
         [data-baseweb="calendar"] {
             background-color: #0b0f19 !important;
             border: 1px solid #1e293b !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
             color: #f8fafc !important;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
         }
 
-        /* 3. 캘린더 내부 월/연도 선택 및 요일/날짜 텍스트 */
-        [data-baseweb="calendar"] * {
+        /* 3. 캘린더 내부 모든 중첩 래퍼/컨테이너 흰색 배경 강제 제거 */
+        [data-baseweb="calendar"] div, 
+        [data-baseweb="calendar"] section, 
+        [data-baseweb="calendar"] header,
+        [data-baseweb="calendar"] ul,
+        [data-baseweb="calendar"] li,
+        [data-baseweb="calendar"] table, 
+        [data-baseweb="calendar"] tr, 
+        [data-baseweb="calendar"] th, 
+        [data-baseweb="calendar"] td {
             background-color: transparent !important;
             color: #f8fafc !important;
         }
 
-        /* 4. 마우스 호버 시 날짜 셀 강조 효과 */
-        [data-baseweb="calendar"] button:hover {
-            background-color: #1e293b !important;
-            border-radius: 6px !important;
+        /* 4. 요일 및 날짜 텍스트 색상 */
+        [data-baseweb="calendar"] th {
+            color: #94a3b8 !important;
         }
 
-        /* 5. 선택된 날짜(Selected Date) 강조 색상 */
+        /* 5. 날짜 선택 버튼 및 호버 효과 */
+        [data-baseweb="calendar"] button {
+            background-color: transparent !important;
+            color: #f8fafc !important;
+            border-radius: 6px !important;
+        }
+        [data-baseweb="calendar"] button:hover {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+        }
+
+        /* 6. 선택된 날짜 (Selected Date) */
         [data-baseweb="calendar"] [aria-selected="true"] {
             background-color: #2563eb !important;
             color: #ffffff !important;
-            border-radius: 6px !important;
+        }
+
+        /* 7. 캘린더 내부 월/연도 선택 드롭다운 팝오버 */
+        div[data-baseweb="menu"], 
+        div[data-baseweb="popover"],
+        div[data-baseweb="popover"] div {
+            background-color: #111827 !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+        }
+        div[data-baseweb="menu"] li:hover {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
         }
     </style>
 """, unsafe_allow_html=True)
