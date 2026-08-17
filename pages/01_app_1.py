@@ -109,18 +109,27 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 컴포넌트 자연스러운 다크 테마 통합 (렉 현상 및 이질감 완벽 제거) */
-        .stMultiSelect [data-baseweb="select"] {
+        /* 멀티셀렉트 선택 바 영역 흰색 배경 및 렉 현상 완벽 차단 */
+        .stMultiSelect div[data-baseweb="select"] {
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
-            box-shadow: none !important;
         }
-        .stMultiSelect [data-baseweb="select"] div {
+        .stMultiSelect div[data-baseweb="select"]:hover {
+            border-color: #2563eb !important;
+        }
+        .stMultiSelect div[data-baseweb="select"]:focus-within {
+            background-color: #111827 !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 1px #2563eb !important;
+        }
+        .stMultiSelect div[data-baseweb="select"] div {
             background-color: transparent !important;
+            color: #f8fafc !important;
         }
         .stMultiSelect input {
             color: #f8fafc !important;
+            background-color: transparent !important;
         }
         
         /* 멀티셀렉트 드롭다운 팝오버 메뉴 영역 스타일링 */
@@ -143,6 +152,9 @@ st.markdown("""
             background-color: #2563eb !important;
             color: #ffffff !important;
             border-radius: 4px !important;
+        }
+        span[data-baseweb="tag"] span {
+            color: #ffffff !important;
         }
 
         /* 경고 및 정보 박스 디자인 개선 */
