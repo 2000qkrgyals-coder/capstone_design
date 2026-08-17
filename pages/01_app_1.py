@@ -109,52 +109,58 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 선택 박스(컨트롤러) 자체의 흰색 배경 및 기본 테마 완전 차단 */
-        .stMultiSelect div[data-baseweb="select"] {
+        /* 멀티셀렉트 선택 박스(컨트롤러) 자체의 흰색 배경 완벽 차단 */
+        .stMultiSelect [data-baseweb="select"] {
+            background: #111827 !important;
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
         }
-        .stMultiSelect div[data-baseweb="select"] div {
-            background-color: transparent !important;
+        .stMultiSelect [data-baseweb="select"] div {
+            background: transparent !important;
             color: #f8fafc !important;
         }
-        .stMultiSelect div[data-baseweb="select"]:hover {
+        .stMultiSelect [data-baseweb="select"]:hover {
             border-color: #2563eb !important;
         }
-        .stMultiSelect div[data-baseweb="select"]:focus-within {
-            background-color: #111827 !important;
+        .stMultiSelect [data-baseweb="select"]:focus-within {
+            background: #111827 !important;
             border-color: #2563eb !important;
             box-shadow: 0 0 0 1px #2563eb !important;
         }
         .stMultiSelect input {
             color: #f8fafc !important;
-            background-color: transparent !important;
+            background: transparent !important;
         }
         
         /* 멀티셀렉트 드롭다운 팝오버 메뉴 영역 스타일링 */
         [data-baseweb="menu"] {
+            background: #111827 !important;
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
         }
         [data-baseweb="menu"] ul, [data-baseweb="menu"] li {
+            background: #111827 !important;
             background-color: #111827 !important;
             color: #f8fafc !important;
         }
         [data-baseweb="menu"] li:hover {
+            background: #1e293b !important;
             background-color: #1e293b !important;
             color: #ffffff !important;
         }
         
         /* 선택된 구역 태그(A, B 등) 디자인 */
         .stMultiSelect span[data-baseweb="tag"] {
+            background: #2563eb !important;
             background-color: #2563eb !important;
             color: #ffffff !important;
             border-radius: 4px !important;
         }
         .stMultiSelect span[data-baseweb="tag"] * {
             color: #ffffff !important;
+            background: transparent !important;
             background-color: transparent !important;
         }
 
