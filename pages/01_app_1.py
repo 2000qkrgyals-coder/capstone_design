@@ -97,8 +97,6 @@ def generate_density_heatmap(area_df, current_counts, img_shape):
     return np.zeros((height, width, 3), dtype=np.uint8)
 
 # --- [사이드바 구성: 관제 시스템 콘솔] ---
-st.sidebar.title("✈️ ICN T2 IOC Console")
-st.sidebar.markdown("---")
 
 menu = st.sidebar.radio(
     "관제 시스템 모드 선택", 
