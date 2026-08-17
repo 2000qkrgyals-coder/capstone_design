@@ -20,15 +20,27 @@ st.set_page_config(
 # --- [디자인 시스템: 다크/프로페셔널 관제 스타일 CSS 적용] ---
 st.markdown("""
     <style>
+        /* 전체 배경 */
         .stApp { background-color: #090d16; color: #e2e8f0; }
-        [data-testid="stSidebar"] { background-color: #0f172a; }
+        
+        /* 사이드바 글자색 강제 흰색 설정 */
+        [data-testid="stSidebar"], [data-testid="stSidebar"] * { 
+            background-color: #0f172a !important; 
+            color: #f1f5f9 !important; 
+        }
+        
+        /* 메트릭 카드 */
         .stMetric { 
             background: linear-gradient(135deg, #111827 0%, #0f172a 100%); 
             padding: 16px; border-radius: 6px; border: 1px solid #1e293b; 
         }
-        .stMetric label { color: #94a3b8 !important; font-size: 0.8rem !important; font-weight: 700 !important; }
+        .stMetric label { color: #94a3b8 !important; }
         .stMetric [data-testid="stMetricValue"] { color: #f8fafc !important; font-family: 'Consolas', monospace; }
-        h1, h2, h3 { color: #f8fafc; font-weight: 700; }
+        
+        /* 헤더 */
+        h1, h2, h3, h4 { color: #f8fafc !important; }
+        
+        /* 데이터프레임 */
         [data-testid="stDataFrame"] { border: 1px solid #1e293b; border-radius: 6px; }
     </style>
 """, unsafe_allow_html=True)
@@ -182,11 +194,14 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             blended = cv2.addWeighted(bg_img, 0.55, heatmap, 0.45, 0)
             st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
             
+        # 97라인 부근을 이렇게 수정하세요
         with c2:
             st.subheader("📊 실시간 혼잡 Top 5 구역")
             sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
-            st.bar_chart(df_top5.set_index("구역"), color="#ff4b4b", height=380)
+            
+            # color 인자를 hex 코드로 명확하게 지정 (관제 테마에 맞는 #38bdf8 사용)
+            st.bar_chart(df_top5.set_index("구역"), color="#38bdf8", height=380)
 
 # ==========================================
 # 2. 🗺️ 터미널 구역별 상세 분석 (구역 선택 기능 포함)
