@@ -109,11 +109,14 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 선택 바 영역 흰색 배경 및 렉 현상 완벽 차단 */
+        /* 멀티셀렉트 선택 바 영역 및 내부 래퍼 흰색 배경 완벽 차단 */
         .stMultiSelect div[data-baseweb="select"] {
             background-color: #111827 !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
+        }
+        .stMultiSelect div[data-baseweb="select"] > div {
+            background-color: #111827 !important;
         }
         .stMultiSelect div[data-baseweb="select"]:hover {
             border-color: #2563eb !important;
@@ -122,10 +125,6 @@ st.markdown("""
             background-color: #111827 !important;
             border-color: #2563eb !important;
             box-shadow: 0 0 0 1px #2563eb !important;
-        }
-        .stMultiSelect div[data-baseweb="select"] div {
-            background-color: transparent !important;
-            color: #f8fafc !important;
         }
         .stMultiSelect input {
             color: #f8fafc !important;
@@ -147,14 +146,15 @@ st.markdown("""
             color: #ffffff !important;
         }
         
-        /* 멀티셀렉트 태그 백그라운드 컬러 스타일링 */
-        span[data-baseweb="tag"] {
+        /* 멀티셀렉트 태그(A, B 등 선택된 구역) 백그라운드 컬러 스타일링 */
+        .stMultiSelect span[data-baseweb="tag"] {
             background-color: #2563eb !important;
             color: #ffffff !important;
             border-radius: 4px !important;
         }
-        span[data-baseweb="tag"] span {
+        .stMultiSelect span[data-baseweb="tag"] * {
             color: #ffffff !important;
+            background-color: transparent !important;
         }
 
         /* 경고 및 정보 박스 디자인 개선 */
