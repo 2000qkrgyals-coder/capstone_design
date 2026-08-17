@@ -109,7 +109,12 @@ st.markdown("""
             background-color: #111827;
         }
         
-        /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 */
+        /* 멀티셀렉트 및 입력 박스 다크 테마 커스텀 (흰색 배경 원천 차단) */
+        .stMultiSelect [data-baseweb="select"], 
+        .stMultiSelect div[data-baseweb="select"] > div {
+            background-color: #111827 !important;
+            border-color: #334155 !important;
+        }
         [data-baseweb="select"] {
             background-color: #111827 !important;
             border-color: #334155 !important;
@@ -117,6 +122,20 @@ st.markdown("""
         [data-baseweb="select"] * {
             color: #f8fafc !important;
             background-color: #111827 !important;
+        }
+        
+        /* 멀티셀렉트 드롭다운 팝오버 메뉴 영역 스타일링 */
+        [data-baseweb="menu"] {
+            background-color: #111827 !important;
+            border: 1px solid #334155 !important;
+        }
+        [data-baseweb="menu"] ul, [data-baseweb="menu"] li {
+            background-color: #111827 !important;
+            color: #f8fafc !important;
+        }
+        [data-baseweb="menu"] li:hover {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
         }
         
         /* 멀티셀렉트 태그 백그라운드 컬러 스타일링 */
@@ -443,7 +462,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
                 df_peaks_display['시간'] = df_peaks_display['시간'].dt.strftime('%H:%M:%S')
                 pivot_df = df_peaks_display.pivot(index='구역', columns='피크단계', values='시간').reset_index()
                 
-                # HTML 커스텀 다크 테이블 렌더링
                 html_table = "<table class='ioc-table'><thead><tr>"
                 for col in pivot_df.columns:
                     html_table += f"<th>{col}</th>"
@@ -481,7 +499,6 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
         
         df_display = pd.DataFrame(detailed_data)
         
-        # HTML 커스텀 다크 테이블 렌더링 (구역별 인력 배치 명세서)
         html_table_staff = "<table class='ioc-table'><thead><tr>"
         for col in df_display.columns:
             html_table_staff += f"<th>{col}</th>"
