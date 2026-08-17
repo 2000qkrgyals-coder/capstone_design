@@ -188,6 +188,53 @@ st.markdown("""
             background-color: #1d4ed8;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
         }
+        /* --- [추가/보완] st.date_input (날짜 선택기) 완벽 다크화 --- */
+        
+        /* 1. 날짜 입력 필드 본체 및 테두리 */
+        [data-baseweb="input"] {
+            background-color: #111827 !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+        }
+        [data-baseweb="input"] input {
+            color: #f8fafc !important;
+            background-color: transparent !important;
+        }
+        [data-baseweb="input"]:hover {
+            border-color: #2563eb !important;
+        }
+        [data-baseweb="input"]:focus-within {
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 1px #2563eb !important;
+        }
+
+        /* 2. 날짜 선택 시 열리는 캘린더 팝오버 전체 배경 */
+        [data-baseweb="calendar"] {
+            background-color: #0b0f19 !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 10px !important;
+            color: #f8fafc !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 3. 캘린더 내부 월/연도 선택 및 요일/날짜 텍스트 */
+        [data-baseweb="calendar"] * {
+            background-color: transparent !important;
+            color: #f8fafc !important;
+        }
+
+        /* 4. 마우스 호버 시 날짜 셀 강조 효과 */
+        [data-baseweb="calendar"] button:hover {
+            background-color: #1e293b !important;
+            border-radius: 6px !important;
+        }
+
+        /* 5. 선택된 날짜(Selected Date) 강조 색상 */
+        [data-baseweb="calendar"] [aria-selected="true"] {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border-radius: 6px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
