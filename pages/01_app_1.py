@@ -188,6 +188,20 @@ st.markdown("""
             background-color: #1d4ed8;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
         }
+
+        /* --- 멀티셀렉트 상단 선택된 항목들이 들어있는 박스 영역 다크화 --- */
+        div[data-baseweb="select"] > div {
+            background-color: #111827 !important;
+            background: #111827 !important;
+            border: 1px solid #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        /* 내부 태그(A, B, D)들이 놓이는 컨테이너 배경 투명화 처리 */
+        div[data-baseweb="select"] [data-baseweb="tag"] {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+        }
         /* --- [st.date_input 달력 빈 행/셀 흰색 배경 완벽 차단 및 다크 고정] --- */
         
         /* 1. 날짜 입력 필드 본체 */
