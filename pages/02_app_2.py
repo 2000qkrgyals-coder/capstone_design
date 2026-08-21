@@ -4,7 +4,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-BASE_DIR = Path(__file__).resolve().parent
+# pages/02_app_2.py 기준으로
+# 프로젝트 루트의 operation_dashboard_data.csv.gz를 읽음
+BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_PATH = BASE_DIR / 'operation_dashboard_data.csv.gz'
 
 COUNTERS = list('ABCDEFGHIJKLMN')
@@ -444,6 +446,69 @@ a {
     color: #f8fafc;
     margin: 22px 0 10px 0;
 }
+
+
+/* =========================================================
+   여기부터 이번에 새로 추가한 부분
+   사이드바 SELECTBOX 흰 배경 제거
+   ========================================================= */
+
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"],
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] > div > div,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] div[role="combobox"],
+[data-testid="stSidebar"] [data-testid="stSelectbox"] div[aria-haspopup="listbox"] {
+    background: #111c30 !important;
+    background-color: #111c30 !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] div,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] span,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] p,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] input {
+    background-color: transparent !important;
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] svg {
+    color: #cbd5e1 !important;
+    fill: #cbd5e1 !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSelectbox"] input::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div {
+    background: #111c30 !important;
+    background-color: #111c30 !important;
+    border-color: #60a5fa !important;
+}
+
+div[data-baseweb="popover"] [role="listbox"],
+div[data-baseweb="popover"] [role="option"],
+div[data-baseweb="popover"] ul,
+div[data-baseweb="popover"] li {
+    background-color: #0f1a2d !important;
+    color: #e5edf7 !important;
+}
+
+div[data-baseweb="popover"] [role="option"]:hover,
+div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
+    background-color: #1b2a43 !important;
+}
+
+/* =========================================================
+   이번 수정 끝
+   ========================================================= */
+
 </style>
     ''',
     unsafe_allow_html=True,
