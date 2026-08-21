@@ -4,8 +4,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# pages/02_app_2.py 기준으로
-# 프로젝트 루트의 operation_dashboard_data.csv.gz를 읽음
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_PATH = BASE_DIR / 'operation_dashboard_data.csv.gz'
 
@@ -448,10 +446,7 @@ a {
 }
 
 
-/* =========================================================
-   여기부터 이번에 새로 추가한 부분
-   사이드바 SELECTBOX 흰 배경 제거
-   ========================================================= */
+/* 사이드바 Selectbox 다크 고정 */
 
 [data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"],
 [data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] > div,
@@ -492,22 +487,66 @@ a {
     border-color: #60a5fa !important;
 }
 
-div[data-baseweb="popover"] [role="listbox"],
-div[data-baseweb="popover"] [role="option"],
-div[data-baseweb="popover"] ul,
-div[data-baseweb="popover"] li {
-    background-color: #0f1a2d !important;
-    color: #e5edf7 !important;
+
+/* OFF 선택 구역 운영 해석 */
+
+.insight-card {
+    border: 1px solid #2a3951;
+    border-radius: 18px;
+    background: #101a2c;
+    padding: 18px 20px;
+    min-height: 132px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
 }
 
-div[data-baseweb="popover"] [role="option"]:hover,
-div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
-    background-color: #1b2a43 !important;
+.insight-label {
+    color: #8fb4df;
+    font-size: 13px;
+    font-weight: 850;
+    margin-bottom: 10px;
 }
 
-/* =========================================================
-   이번 수정 끝
-   ========================================================= */
+.insight-main {
+    color: #f8fafc;
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1.45;
+}
+
+.insight-sub {
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 10px;
+}
+
+.forecast-card {
+    border: 1px solid #245b8a;
+    border-radius: 18px;
+    background: #0e2037;
+    padding: 18px 20px;
+    margin-top: 4px;
+}
+
+.forecast-label {
+    color: #93c5fd;
+    font-size: 13px;
+    font-weight: 850;
+    margin-bottom: 10px;
+}
+
+.forecast-main {
+    color: #f8fafc;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.5;
+}
+
+.forecast-sub {
+    color: #a8b6c8;
+    font-size: 12px;
+    margin-top: 9px;
+}
 
 </style>
     ''',
@@ -721,6 +760,134 @@ def axis_name(area):
     return '필요 창구 수'
 
 
+def plan_basis_text(area):
+    if area == 'A':
+        return '프리미엄 체크인 기준: 예상 수요 8명당 창구 1개'
+
+    if area in SELF_COUNTERS:
+        return '셀프 체크인 기준: 예상 수요 6명당 기기 1대'
+
+    if area in IM_AREAS:
+        return (
+            '출국장 기준: 예상 수요 30명당 출입문 1개 · '
+            '수요 발생 시 최소 3개 · 최대 6개'
+        )
+
+    return '일반 체크인 기준: 예상 수요 5명당 창구 1개'
+
+
+def build_plan_outlook(chart, selected_time, unit):
+    selected_minute = hhmm_to_minute(selected_time)
+    end_minute = min(1439, selected_minute + 90)
+    suffix = unit_suffix(unit)
+
+    future = chart[
+        (chart['구분'] == '항공편 기반 계획')
+        & (chart['분'] >= selected_minute)
+        & (chart['분'] <= end_minute)
+    ].copy()
+
+    if future.empty:
+        return (
+            '향후 운영계획 데이터가 없습니다.',
+            '선택한 시각 이후의 계획 데이터를 확인할 수 없습니다.',
+        )
+
+    future = future.sort_values('분')
+
+    future['필요수'] = pd.to_numeric(
+        future['필요수'],
+        errors='coerce',
+    ).fillna(0)
+
+    current_value = int(
+        round(
+            float(
+                future.iloc[0]['필요수']
+            )
+        )
+    )
+
+    previous_value = current_value
+    changes = []
+
+    for _, future_row in future.iloc[1:].iterrows():
+        value = int(
+            round(
+                float(
+                    future_row['필요수']
+                )
+            )
+        )
+
+        if value != previous_value:
+            changes.append(
+                (
+                    str(
+                        future_row['시각']
+                    ),
+                    value,
+                )
+            )
+
+            previous_value = value
+
+    timeline = [
+        f'현재 {current_value}{suffix}'
+    ]
+
+    for change_time, value in changes[:3]:
+        timeline.append(
+            f'{change_time} {value}{suffix}'
+        )
+
+    if len(changes) > 3:
+        timeline.append('…')
+
+    main_text = ' → '.join(
+        timeline
+    )
+
+    max_value = int(
+        round(
+            float(
+                future['필요수'].max()
+            )
+        )
+    )
+
+    min_value = int(
+        round(
+            float(
+                future['필요수'].min()
+            )
+        )
+    )
+
+    horizon_minutes = max(
+        0,
+        end_minute - selected_minute,
+    )
+
+    if max_value == min_value:
+        sub_text = (
+            f'향후 {horizon_minutes}분 동안 '
+            f'{max_value}{suffix} 수준이 유지됩니다.'
+        )
+
+    else:
+        sub_text = (
+            f'향후 {horizon_minutes}분 기준 '
+            f'최대 {max_value}{suffix} · '
+            f'최소 {min_value}{suffix}'
+        )
+
+    return (
+        main_text,
+        sub_text,
+    )
+
+
 def keep_rate(area):
     if area == 'A':
         return 0.70
@@ -806,10 +973,12 @@ def add_recommendation_columns(rows):
 
             if final_units < plan_units:
                 decision = '감축 검토'
+
                 final_staff = estimate_staff_from_units(
                     area,
                     final_units,
                 )
+
             else:
                 decision = '계획 유지'
                 final_units = plan_units
@@ -841,7 +1010,9 @@ def base_area_frame(area):
     else:
         areas = [area]
 
-    return pd.DataFrame({'구역': areas})
+    return pd.DataFrame({
+        '구역': areas
+    })
 
 
 def fill_snapshot_defaults(rows):
@@ -860,9 +1031,17 @@ def fill_snapshot_defaults(rows):
                 errors='coerce',
             ).fillna(0)
 
-    rows['상태'] = rows['상태'].fillna('계획 유지')
-    rows['권고'] = rows['권고'].fillna('계획 유지')
-    rows['IM판단'] = rows['IM판단'].fillna('')
+    rows['상태'] = rows['상태'].fillna(
+        '계획 유지'
+    )
+
+    rows['권고'] = rows['권고'].fillna(
+        '계획 유지'
+    )
+
+    rows['IM판단'] = rows['IM판단'].fillna(
+        ''
+    )
 
     return rows
 
@@ -873,7 +1052,9 @@ def current_snapshot(
     time_value,
     area,
 ):
-    minute = hhmm_to_minute(time_value)
+    minute = hhmm_to_minute(
+        time_value
+    )
 
     rows = df[
         (df['일자'] == date)
@@ -886,19 +1067,37 @@ def current_snapshot(
             keep='last',
         )
 
-    rows = base_area_frame(area).merge(
+    rows = base_area_frame(
+        area
+    ).merge(
         rows,
         on='구역',
         how='left',
     )
 
-    rows['일자'] = rows['일자'].fillna(date)
-    rows['분'] = rows['분'].fillna(minute).astype(int)
-    rows['시각'] = rows['시각'].fillna(time_value)
+    rows['일자'] = rows['일자'].fillna(
+        date
+    )
 
-    rows = fill_snapshot_defaults(rows)
-    rows = recalc_im_rows(rows)
-    rows = add_recommendation_columns(rows)
+    rows['분'] = rows['분'].fillna(
+        minute
+    ).astype(int)
+
+    rows['시각'] = rows['시각'].fillna(
+        time_value
+    )
+
+    rows = fill_snapshot_defaults(
+        rows
+    )
+
+    rows = recalc_im_rows(
+        rows
+    )
+
+    rows = add_recommendation_columns(
+        rows
+    )
 
     if area != '전체':
         rows = rows[
@@ -926,7 +1125,9 @@ def day_series(
             day['구역'] == area
         ].copy()
 
-    day = recalc_im_rows(day)
+    day = recalc_im_rows(
+        day
+    )
 
     base = pd.DataFrame({
         '분': list(
@@ -974,7 +1175,9 @@ def day_series(
             errors='coerce',
         ).fillna(0)
 
-    return out.sort_values('분')
+    return out.sort_values(
+        '분'
+    )
 
 
 def get_live_end_minute(selected_time):
@@ -991,7 +1194,9 @@ def get_live_end_minute(selected_time):
 
     live_end = (
         selected_min
-        + int(st.session_state['live_elapsed'])
+        + int(
+            st.session_state['live_elapsed']
+        )
     )
 
     return max(
@@ -1190,7 +1395,9 @@ def draw_line_chart(
 
     fig.update_traces(
         mode='lines',
-        line=dict(width=3),
+        line=dict(
+            width=3,
+        ),
         hovertemplate=(
             '시각=%{customdata[0]}<br>'
             '구분=%{customdata[1]}<br>'
@@ -1203,29 +1410,37 @@ def draw_line_chart(
         template='plotly_dark',
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='#0f1a2d',
+
         font=dict(
             color='#dbe7f3',
         ),
+
         title_font=dict(
             color='#f8fafc',
         ),
+
         legend=dict(
             bgcolor='rgba(0,0,0,0)',
             font=dict(
                 color='#dbe7f3',
             ),
         ),
+
         title=title_text,
         height=410,
+
         margin=dict(
             l=10,
             r=10,
             t=42,
             b=10,
         ),
+
         legend_title_text='',
+
         xaxis_title='',
         yaxis_title=y_title,
+
         hovermode='x unified',
     )
 
@@ -1257,7 +1472,9 @@ def draw_line_chart(
 
 
 def render_flow(row):
-    suffix = unit_suffix(row['단위'])
+    suffix = unit_suffix(
+        row['단위']
+    )
 
     c1, c2, c3 = st.columns(3)
 
@@ -1302,21 +1519,40 @@ def render_flow(row):
 
 
 def recommendation_reason(row):
-    area = str(row['구역'])
-    suffix = unit_suffix(row['단위'])
+    area = str(
+        row['구역']
+    )
+
+    suffix = unit_suffix(
+        row['단위']
+    )
 
     if row['단위'] == '기기':
         unit_name = '기기'
     else:
         unit_name = row['단위']
 
-    plan_units = int(row['계획오픈수'])
-    sensor_units = int(row['실시간필요수'])
-    recommended_units = int(row['권고필요수'])
-    decision = str(row['조정판단'])
+    plan_units = int(
+        row['계획오픈수']
+    )
+
+    sensor_units = int(
+        row['실시간필요수']
+    )
+
+    recommended_units = int(
+        row['권고필요수']
+    )
+
+    decision = str(
+        row['조정판단']
+    )
 
     if decision == '추가 필요':
-        amount = recommended_units - plan_units
+        amount = (
+            recommended_units
+            - plan_units
+        )
 
         return (
             f'인원수 기준 필요 {unit_name}가 '
@@ -1325,7 +1561,10 @@ def recommendation_reason(row):
         )
 
     if decision == '감축 검토':
-        amount = plan_units - recommended_units
+        amount = (
+            plan_units
+            - recommended_units
+        )
 
         return (
             f'인원수 기준 필요 {unit_name}가 '
@@ -1348,11 +1587,21 @@ def recommendation_reason(row):
 
 
 def render_decision_box(row):
-    decision = str(row['조정판단'])
-    suffix = unit_suffix(row['단위'])
+    decision = str(
+        row['조정판단']
+    )
 
-    adjust = int(row['조정필요수'])
-    staff_adjust = int(row['직원조정수'])
+    suffix = unit_suffix(
+        row['단위']
+    )
+
+    adjust = int(
+        row['조정필요수']
+    )
+
+    staff_adjust = int(
+        row['직원조정수']
+    )
 
     if decision == '추가 필요':
         css_class = 'decision-add'
@@ -1360,7 +1609,10 @@ def render_decision_box(row):
 
     elif decision == '감축 검토':
         css_class = 'decision-reduce'
-        title = f'감축 검토 {abs(adjust)}{suffix}'
+        title = (
+            f'감축 검토 '
+            f'{abs(adjust)}{suffix}'
+        )
 
     else:
         css_class = 'decision-keep'
@@ -1407,21 +1659,33 @@ def action_board(current):
             '현재 데이터 기준 추가 운영 또는 '
             '감축 검토가 필요한 구역이 없습니다.'
         )
+
         return
 
     for _, row in priority.iterrows():
-        suffix = unit_suffix(row['단위'])
-        adjust = int(row['조정필요수'])
-        staff_adjust = int(row['직원조정수'])
+        suffix = unit_suffix(
+            row['단위']
+        )
+
+        adjust = int(
+            row['조정필요수']
+        )
+
+        staff_adjust = int(
+            row['직원조정수']
+        )
 
         if adjust > 0:
             css_class = 'add'
+
             title = (
                 f"{row['구역']} · "
                 f'{abs(adjust)}{suffix} 추가 운영'
             )
+
         else:
             css_class = 'reduce'
+
             title = (
                 f"{row['구역']} · "
                 f'{abs(adjust)}{suffix} 감축 검토'
@@ -1629,6 +1893,7 @@ if df.empty:
         '데이터가 비어 있습니다. '
         '전처리 결과를 확인하세요.'
     )
+
     st.stop()
 
 
@@ -1642,7 +1907,9 @@ times = selectable_times()
 
 
 with st.sidebar:
-    st.header('관제 설정')
+    st.header(
+        '관제 설정'
+    )
 
     selected_date = st.selectbox(
         '일자',
@@ -1800,6 +2067,7 @@ def render_off_view():
                     plan_units
                 ),
             )
+
         else:
             metric_card(
                 y_title,
@@ -1827,6 +2095,7 @@ def render_off_view():
                 ),
                 '곳',
             )
+
         else:
             metric_card(
                 '구역 유형',
@@ -1877,52 +2146,113 @@ def render_off_view():
             row['단위']
         )
 
+        basic_staff = int(
+            row['계획기본직원수']
+        )
+
+        support_staff = int(
+            row['계획지원직원수']
+        )
+
+        total_staff = int(
+            row['계획총직원수']
+        )
+
+        plan_units = int(
+            row['계획오픈수']
+        )
+
+        plan_demand_value = fmt_num(
+            row['계획수요']
+        )
+
+        if row['단위'] == '기기':
+            staff_main_text = (
+                f'기기 지원 {support_staff}명 · '
+                f'총 {total_staff}명'
+            )
+
+        else:
+            staff_main_text = (
+                f'기본 운영 {basic_staff}명 · '
+                f'현장 지원 {support_staff}명 · '
+                f'총 {total_staff}명'
+            )
+
+        operation_unit_name = (
+            '기기'
+            if row['단위'] == '기기'
+            else row['단위']
+        )
+
+        interpretation_text = (
+            f'{selected_time} 기준 예상 수요 {plan_demand_value}명으로 '
+            f'{plan_units}{suffix} {operation_unit_name} 운영과 '
+            f'총 {total_staff}명 배치를 계획했습니다.'
+        )
+
+        forecast_main, forecast_sub = build_plan_outlook(
+            chart,
+            selected_time,
+            row['단위'],
+        )
+
         st.markdown(
             (
                 '<div class="section-title">'
-                '선택 구역 운영계획'
+                '운영 계획 해석'
                 '</div>'
             ),
             unsafe_allow_html=True,
         )
 
-        c1, c2, c3, c4 = st.columns(4)
+        info_col1, info_col2 = st.columns(2)
 
-        with c1:
-            metric_card(
-                '계획 수요',
-                fmt_num(
-                    row['계획수요']
+        with info_col1:
+            st.markdown(
+                (
+                    '<div class="insight-card">'
+                    '<div class="insight-label">운영 인력 구성</div>'
+                    f'<div class="insight-main">{staff_main_text}</div>'
+                    f'<div class="insight-sub">{plan_basis_text(selected_area)}</div>'
+                    '</div>'
                 ),
-                '명',
+                unsafe_allow_html=True,
             )
 
-        with c2:
-            metric_card(
-                '계획 필요',
-                fmt_num(
-                    row['계획오픈수']
+        with info_col2:
+            st.markdown(
+                (
+                    '<div class="insight-card">'
+                    '<div class="insight-label">현재 계획 해석</div>'
+                    f'<div class="insight-main">{interpretation_text}</div>'
+                    '<div class="insight-sub">'
+                    '항공편 기반 사전 운영계획을 선택 시각 기준으로 해석한 결과입니다.'
+                    '</div>'
+                    '</div>'
                 ),
-                suffix,
+                unsafe_allow_html=True,
             )
 
-        with c3:
-            metric_card(
-                '기본 직원',
-                fmt_num(
-                    row['계획기본직원수']
-                ),
-                '명',
-            )
+        st.markdown(
+            (
+                '<div class="section-title">'
+                '향후 90분 운영 전망'
+                '</div>'
+            ),
+            unsafe_allow_html=True,
+        )
 
-        with c4:
-            metric_card(
-                '총 계획 직원',
-                fmt_num(
-                    row['계획총직원수']
-                ),
-                '명',
-            )
+        st.markdown(
+            (
+                '<div class="forecast-card">'
+                '<div class="forecast-label">계획 변화 타임라인</div>'
+                f'<div class="forecast-main">{forecast_main}</div>'
+                f'<div class="forecast-sub">{forecast_sub}</div>'
+                '</div>'
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 def render_live_view():
