@@ -122,13 +122,14 @@ p, label {
     color: #93a4ba !important;
 }
 
+/* 제목 */
 .main-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 54px;
+    min-height: 64px;
     overflow: visible;
-    padding: 5px 0 4px 0;
+    padding: 10px 0 8px 0;
     margin: 0 0 4px 0;
     color: #f8fafc;
     font-size: 34px;
@@ -137,15 +138,30 @@ p, label {
     line-height: 1.28;
 }
 
+/* 비행기 이모지 잘림 방지 */
 .title-emoji {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+
     font-size: 36px;
-    line-height: 1.25;
-    padding: 3px 0 2px 0;
+    line-height: 1.35;
+
+    padding: 4px 4px 6px 4px;
+
     overflow: visible;
+    box-sizing: content-box;
+
+    font-family:
+        "Segoe UI Emoji",
+        "Apple Color Emoji",
+        "Noto Color Emoji",
+        sans-serif;
 }
 
 .sub-title {
