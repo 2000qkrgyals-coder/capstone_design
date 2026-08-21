@@ -7,29 +7,54 @@ import streamlit as st
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "operation_dashboard_data.csv.gz"
+
+# =========================================================
+# 메모리 절약형 데이터 구조
+# =========================================================
+
+DATA_DIR = BASE_DIR / "operation_daily"
+DATES_PATH = BASE_DIR / "operation_dates.csv"
+
 
 COUNTERS = list("ABCDEFGHIJKLMN")
 AREA_LIST = COUNTERS + ["IM1", "IM2"]
 AREAS = ["전체"] + AREA_LIST
+
 SELF_COUNTERS = {"B", "F", "G", "L"}
 IM_AREAS = {"IM1", "IM2"}
+
 
 TYPE_MAP = {}
 UNIT_MAP = {}
 
+
 for counter in COUNTERS:
     if counter == "A":
-        TYPE_MAP[counter] = "프리미엄 체크인"
-        UNIT_MAP[counter] = "창구"
+        TYPE_MAP[counter] = (
+            "프리미엄 체크인"
+        )
+
+        UNIT_MAP[counter] = (
+            "창구"
+        )
 
     elif counter in SELF_COUNTERS:
-        TYPE_MAP[counter] = "셀프 체크인"
-        UNIT_MAP[counter] = "기기"
+        TYPE_MAP[counter] = (
+            "셀프 체크인"
+        )
+
+        UNIT_MAP[counter] = (
+            "기기"
+        )
 
     else:
-        TYPE_MAP[counter] = "일반 체크인"
-        UNIT_MAP[counter] = "창구"
+        TYPE_MAP[counter] = (
+            "일반 체크인"
+        )
+
+        UNIT_MAP[counter] = (
+            "창구"
+        )
 
 
 TYPE_MAP.update(
@@ -39,6 +64,7 @@ TYPE_MAP.update(
     }
 )
 
+
 UNIT_MAP.update(
     {
         "IM1": "출입문",
@@ -46,6 +72,10 @@ UNIT_MAP.update(
     }
 )
 
+
+# =========================================================
+# IM 기준
+# =========================================================
 
 IM_MAX_GATES = 6
 IM_MIN_ACTIVE_GATES = 3
@@ -70,18 +100,20 @@ NUMERIC_COLS = [
 
 
 st.set_page_config(
-    page_title="T2 운영 최적화 수정 시스템",
+    page_title=(
+        "T2 운영 최적화 수정 시스템"
+    ),
     layout="wide",
 )
 
 
+# =========================================================
+# DARK MODE
+# =========================================================
+
 st.markdown(
     """
 <style>
-
-/* =========================================================
-   전체 다크 테마
-   ========================================================= */
 
 :root {
     color-scheme: dark;
@@ -109,10 +141,6 @@ body,
 }
 
 
-/* =========================================================
-   사이드바
-   ========================================================= */
-
 [data-testid="stSidebar"],
 [data-testid="stSidebarContent"] {
     background: #0c1627 !important;
@@ -128,29 +156,27 @@ body,
 }
 
 
-/* =========================================================
-   기본 레이아웃
-   ========================================================= */
-
 .block-container {
     padding-top: 2rem;
     padding-bottom: 2.5rem;
 }
+
 
 h1,
 h2,
 h3,
 h4,
 h5,
-h6,
-[data-testid="stMarkdownContainer"] {
-    color: #e5edf7;
+h6 {
+    color: #e5edf7 !important;
 }
+
 
 p,
 label {
     color: #d7e0ec;
 }
+
 
 [data-testid="stCaptionContainer"] {
     color: #93a4ba !important;
@@ -158,16 +184,15 @@ label {
 
 
 /* =========================================================
-   메인 제목
+   제목
    ========================================================= */
 
 .main-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 54px;
 
-    overflow: visible;
+    min-height: 54px;
 
     padding: 5px 0 4px 0;
     margin: 0 0 4px 0;
@@ -179,10 +204,14 @@ label {
 
     letter-spacing: -0.8px;
     line-height: 1.28;
+
+    overflow: visible;
 }
+
 
 .title-emoji {
     display: inline-flex;
+
     align-items: center;
     justify-content: center;
 
@@ -196,6 +225,7 @@ label {
     overflow: visible;
 }
 
+
 .sub-title {
     color: #94a3b8;
 
@@ -206,10 +236,9 @@ label {
 
 
 /* =========================================================
-   SELECTBOX 강제 다크 모드
+   SELECTBOX
    ========================================================= */
 
-/* 선택창 외부와 내부 */
 [data-testid="stSelectbox"] [data-baseweb="select"],
 [data-testid="stSelectbox"] [data-baseweb="select"] > div,
 [data-testid="stSelectbox"] [data-baseweb="select"] > div > div,
@@ -226,21 +255,6 @@ label {
 }
 
 
-/* BaseWeb 내부 흰색 레이어까지 강제로 제거 */
-[data-testid="stSelectbox"] div[data-baseweb="select"] {
-    background-color: #111c30 !important;
-}
-
-[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-    background-color: #111c30 !important;
-}
-
-[data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
-    background-color: #111c30 !important;
-}
-
-
-/* 선택된 값 글씨 */
 [data-testid="stSelectbox"] [data-baseweb="select"] div,
 [data-testid="stSelectbox"] [data-baseweb="select"] span,
 [data-testid="stSelectbox"] [data-baseweb="select"] p,
@@ -249,60 +263,41 @@ label {
 }
 
 
-/* 선택창 아이콘 */
 [data-testid="stSelectbox"] [data-baseweb="select"] svg {
     color: #cbd5e1 !important;
     fill: #cbd5e1 !important;
 }
 
 
-/* placeholder */
 [data-testid="stSelectbox"] input::placeholder {
     color: #94a3b8 !important;
     opacity: 1 !important;
 }
 
 
-/* 포커스 */
 [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within,
-[data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div,
-[data-testid="stSelectbox"] div[role="combobox"]:focus,
-[data-testid="stSelectbox"] div[aria-haspopup="listbox"]:focus {
+[data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div {
     background-color: #111c30 !important;
-    background: #111c30 !important;
 
     border-color: #60a5fa !important;
 }
 
 
-/* 펼쳐지는 드롭다운 */
 div[data-baseweb="popover"],
 div[data-baseweb="menu"],
 div[role="listbox"],
-div[role="option"],
-div[data-baseweb="popover"] ul,
-div[data-baseweb="popover"] li {
+div[role="option"] {
     background-color: #0f1a2d !important;
+
     color: #e5edf7 !important;
 }
+
 
 div[role="option"]:hover,
 div[role="option"][aria-selected="true"] {
     background-color: #1b2a43 !important;
 }
 
-
-/* =========================================================
-   기타 입력 위젯
-   ========================================================= */
-
-div[data-baseweb="input"] > div,
-[data-testid="stNumberInput"] input,
-[data-testid="stTextInput"] input {
-    background: #111c30 !important;
-    color: #f8fafc !important;
-    border-color: #334155 !important;
-}
 
 [data-testid="stRadio"] label,
 [data-testid="stRadio"] p,
@@ -313,7 +308,7 @@ div[data-baseweb="input"] > div,
 
 
 /* =========================================================
-   Expander
+   EXPANDER
    ========================================================= */
 
 [data-testid="stExpander"] {
@@ -323,6 +318,7 @@ div[data-baseweb="input"] > div,
     border-radius: 14px !important;
 }
 
+
 [data-testid="stExpander"] summary,
 [data-testid="stExpander"] summary * {
     color: #e5edf7 !important;
@@ -330,7 +326,7 @@ div[data-baseweb="input"] > div,
 
 
 /* =========================================================
-   Dataframe
+   DATAFRAME
    ========================================================= */
 
 [data-testid="stDataFrame"] {
@@ -343,27 +339,7 @@ div[data-baseweb="input"] > div,
 
 
 /* =========================================================
-   Alert
-   ========================================================= */
-
-[data-testid="stAlert"] {
-    background: #101d31 !important;
-    color: #e5edf7 !important;
-
-    border: 1px solid #334155 !important;
-}
-
-hr {
-    border-color: #25324a !important;
-}
-
-a {
-    color: #7dd3fc !important;
-}
-
-
-/* =========================================================
-   상단 상태 바
+   상태 표시
    ========================================================= */
 
 .status-strip {
@@ -379,29 +355,37 @@ a {
     border: 1px solid;
 }
 
+
 .plan-strip {
     background: #0f2440;
+
     color: #93c5fd;
 
     border-color: #1d4f7a;
 }
 
+
 .live-strip {
     background: #0b2a23;
+
     color: #6ee7b7;
 
     border-color: #17624f;
 }
 
+
 .alert-strip {
     background: #32141c;
+
     color: #fda4af;
 
     border-color: #7f1d35;
 }
 
+
 .reduce-strip {
     background: #321f12;
+
     color: #fdba74;
 
     border-color: #7c3f18;
@@ -414,6 +398,7 @@ a {
 
 .kpi-card {
     border: 1px solid #2a3951;
+
     border-radius: 18px;
 
     background: #101a2c;
@@ -422,8 +407,11 @@ a {
 
     min-height: 118px;
 
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    box-shadow:
+        0 8px 22px
+        rgba(0, 0, 0, 0.22);
 }
+
 
 .kpi-label {
     color: #94a3b8;
@@ -434,6 +422,7 @@ a {
     margin-bottom: 8px;
 }
 
+
 .kpi-value {
     color: #f8fafc;
 
@@ -441,8 +430,10 @@ a {
     font-weight: 950;
 
     letter-spacing: -0.7px;
+
     line-height: 1.12;
 }
+
 
 .kpi-sub {
     color: #94a3b8;
@@ -456,7 +447,7 @@ a {
 
 
 /* =========================================================
-   LIVE 전체 요약
+   LIVE SUMMARY
    ========================================================= */
 
 .summary-card {
@@ -469,25 +460,34 @@ a {
     border: 1px solid;
 }
 
+
 .summary-add {
     background: #2f141d;
+
     border-color: #7f1d35;
 }
 
+
 .summary-reduce {
     background: #322014;
+
     border-color: #7c3f18;
 }
 
+
 .summary-keep {
     background: #0c2922;
+
     border-color: #17624f;
 }
 
+
 .summary-staff {
     background: #10253e;
+
     border-color: #245b8a;
 }
+
 
 .summary-label {
     font-size: 13px;
@@ -498,6 +498,7 @@ a {
     margin-bottom: 8px;
 }
 
+
 .summary-value {
     font-size: 31px;
     font-weight: 950;
@@ -506,6 +507,7 @@ a {
 
     line-height: 1.1;
 }
+
 
 .summary-sub {
     margin-top: 8px;
@@ -517,11 +519,12 @@ a {
 
 
 /* =========================================================
-   운영 전환 흐름
+   FLOW
    ========================================================= */
 
 .flow-step {
     border: 1px solid #2a3951;
+
     border-radius: 18px;
 
     padding: 18px;
@@ -531,11 +534,13 @@ a {
     min-height: 132px;
 }
 
+
 .flow-step.final {
     border-color: #2563a5;
 
     background: #10253e;
 }
+
 
 .flow-number {
     font-size: 12px;
@@ -546,12 +551,14 @@ a {
     margin-bottom: 8px;
 }
 
+
 .flow-title {
     font-size: 14px;
     font-weight: 800;
 
     color: #a9b7c9;
 }
+
 
 .flow-value {
     font-size: 32px;
@@ -561,6 +568,7 @@ a {
 
     margin-top: 8px;
 }
+
 
 .flow-sub {
     font-size: 12px;
@@ -572,7 +580,7 @@ a {
 
 
 /* =========================================================
-   최종 판단
+   DECISION
    ========================================================= */
 
 .decision-box {
@@ -580,25 +588,36 @@ a {
 
     padding: 18px 20px;
 
-    margin: 10px 0 16px 0;
+    margin:
+        10px
+        0
+        16px
+        0;
 
     border: 1px solid;
 }
 
+
 .decision-add {
     background: #2f141d;
+
     border-color: #7f1d35;
 }
 
+
 .decision-reduce {
     background: #10253e;
+
     border-color: #245b8a;
 }
 
+
 .decision-keep {
     background: #0c2922;
+
     border-color: #17624f;
 }
+
 
 .decision-title {
     font-size: 21px;
@@ -606,6 +625,7 @@ a {
 
     color: #f8fafc;
 }
+
 
 .decision-sub {
     margin-top: 7px;
@@ -619,11 +639,12 @@ a {
 
 
 /* =========================================================
-   Action board
+   ACTION
    ========================================================= */
 
 .action-card {
     border: 1px solid #2a3951;
+
     border-radius: 16px;
 
     padding: 15px 16px;
@@ -633,13 +654,22 @@ a {
     margin-bottom: 10px;
 }
 
+
 .action-card.add {
-    border-left: 6px solid #fb7185;
+    border-left:
+        6px
+        solid
+        #fb7185;
 }
 
+
 .action-card.reduce {
-    border-left: 6px solid #fb923c;
+    border-left:
+        6px
+        solid
+        #fb923c;
 }
+
 
 .action-title {
     font-size: 17px;
@@ -647,6 +677,7 @@ a {
 
     color: #f8fafc;
 }
+
 
 .action-sub {
     margin-top: 5px;
@@ -659,17 +690,17 @@ a {
 }
 
 
-/* =========================================================
-   Section title
-   ========================================================= */
-
 .section-title {
     font-size: 21px;
     font-weight: 900;
 
     color: #f8fafc;
 
-    margin: 22px 0 10px 0;
+    margin:
+        22px
+        0
+        10px
+        0;
 }
 
 </style>
@@ -678,17 +709,30 @@ a {
 )
 
 
-def ceil_div(value, base):
+# =========================================================
+# 계산 함수
+# =========================================================
+
+def ceil_div(
+    value,
+    base,
+):
     value = float(value)
 
     if value <= 0:
         return 0
 
-    return math.ceil(value / base)
+    return math.ceil(
+        value / base
+    )
 
 
-def calc_im_gates(people):
-    people = float(people)
+def calc_im_gates(
+    people,
+):
+    people = float(
+        people
+    )
 
     if people <= 0:
         return 0
@@ -711,8 +755,12 @@ def calc_im_gates(people):
     return int(gates)
 
 
-def calc_im_support_staff(gates):
-    gates = int(gates)
+def calc_im_support_staff(
+    gates,
+):
+    gates = int(
+        gates
+    )
 
     if gates <= 0:
         return 0
@@ -732,53 +780,111 @@ def recalc_im_rows(df):
     if "구역" not in df.columns:
         return df
 
-    mask = df["구역"].isin(
-        IM_AREAS
+    mask = (
+        df["구역"]
+        .isin(
+            IM_AREAS
+        )
     )
 
-    for idx, row in df.loc[mask].iterrows():
-        plan_gates = calc_im_gates(
-            row["계획수요"]
+    for idx, row in df.loc[
+        mask
+    ].iterrows():
+
+        plan_gates = (
+            calc_im_gates(
+                row["계획수요"]
+            )
         )
 
-        sensor_gates = calc_im_gates(
-            row["실시간인원수"]
+        sensor_gates = (
+            calc_im_gates(
+                row[
+                    "실시간인원수"
+                ]
+            )
         )
 
-        plan_support = calc_im_support_staff(
-            plan_gates
+        plan_support = (
+            calc_im_support_staff(
+                plan_gates
+            )
         )
 
-        sensor_support = calc_im_support_staff(
-            sensor_gates
+        sensor_support = (
+            calc_im_support_staff(
+                sensor_gates
+            )
         )
 
-        df.at[idx, "유형"] = "출국장 진입"
-        df.at[idx, "단위"] = "출입문"
+        df.at[
+            idx,
+            "유형",
+        ] = "출국장 진입"
 
-        df.at[idx, "계획오픈수"] = plan_gates
-        df.at[idx, "실시간필요수"] = sensor_gates
+        df.at[
+            idx,
+            "단위",
+        ] = "출입문"
 
-        df.at[idx, "계획기본직원수"] = plan_gates
-        df.at[idx, "계획지원직원수"] = plan_support
-        df.at[idx, "계획총직원수"] = (
+        df.at[
+            idx,
+            "계획오픈수",
+        ] = plan_gates
+
+        df.at[
+            idx,
+            "실시간필요수",
+        ] = sensor_gates
+
+        df.at[
+            idx,
+            "계획기본직원수",
+        ] = plan_gates
+
+        df.at[
+            idx,
+            "계획지원직원수",
+        ] = plan_support
+
+        df.at[
+            idx,
+            "계획총직원수",
+        ] = (
             plan_gates
             + plan_support
         )
 
-        df.at[idx, "실시간기본직원수"] = sensor_gates
-        df.at[idx, "실시간지원직원수"] = sensor_support
-        df.at[idx, "실시간총직원수"] = (
+        df.at[
+            idx,
+            "실시간기본직원수",
+        ] = sensor_gates
+
+        df.at[
+            idx,
+            "실시간지원직원수",
+        ] = sensor_support
+
+        df.at[
+            idx,
+            "실시간총직원수",
+        ] = (
             sensor_gates
             + sensor_support
         )
 
-        df.at[idx, "필요수차이"] = (
+        df.at[
+            idx,
+            "필요수차이",
+        ] = (
             sensor_gates
             - plan_gates
         )
 
-        df.at[idx, "직원차이"] = (
+        df.at[
+            idx,
+            "직원차이",
+        ] = (
             sensor_gates
             + sensor_support
             - plan_gates
@@ -786,80 +892,180 @@ def recalc_im_rows(df):
         )
 
         if sensor_gates >= 5:
-            df.at[idx, "IM판단"] = (
+            df.at[
+                idx,
+                "IM판단",
+            ] = (
                 "집중 운영 권고"
             )
 
         elif sensor_gates >= 3:
-            df.at[idx, "IM판단"] = (
+            df.at[
+                idx,
+                "IM판단",
+            ] = (
                 "기본 운영 수준"
             )
 
         elif sensor_gates > 0:
-            df.at[idx, "IM판단"] = (
+            df.at[
+                idx,
+                "IM판단",
+            ] = (
                 "최소 개방 수준"
             )
 
         else:
-            df.at[idx, "IM판단"] = (
+            df.at[
+                idx,
+                "IM판단",
+            ] = (
                 "출입문 대기 수요 없음"
             )
 
     return df
 
 
-@st.cache_resource(show_spinner=False)
-def load_data(file_mtime):
+# =========================================================
+# 날짜별 데이터 로딩
+# =========================================================
+
+def daily_path(
+    date_value,
+):
+    return (
+        DATA_DIR
+        / (
+            f"operation_"
+            f"{date_value}"
+            f".csv.gz"
+        )
+    )
+
+
+def load_dates():
+    if not DATES_PATH.exists():
+        return []
+
+    manifest = pd.read_csv(
+        DATES_PATH,
+        encoding="utf-8-sig",
+        usecols=[
+            "일자",
+        ],
+    )
+
+    return sorted(
+        manifest[
+            "일자"
+        ]
+        .astype(str)
+        .dropna()
+        .unique()
+        .tolist()
+    )
+
+
+# 핵심:
+# 전체 8~10월 데이터를 캐시하지 않고
+# 현재 선택 날짜 하루치만 최대 2개까지 캐시
+@st.cache_resource(
+    show_spinner=False,
+    max_entries=2,
+)
+def load_day(
+    date_value,
+    file_mtime,
+):
     _ = file_mtime
 
+    path = daily_path(
+        date_value
+    )
+
     df = pd.read_csv(
-        DATA_PATH,
+        path,
         encoding="utf-8-sig",
         compression="infer",
     )
 
-    df["일자"] = df["일자"].astype(str)
-    df["구역"] = df["구역"].astype(str)
-    df["시각"] = df["시각"].astype(str)
+    df["일자"] = (
+        df["일자"]
+        .astype(str)
+    )
 
-    if "IM판단" not in df.columns:
+    df["구역"] = (
+        df["구역"]
+        .astype(str)
+    )
+
+    df["시각"] = (
+        df["시각"]
+        .astype(str)
+    )
+
+    if (
+        "IM판단"
+        not in df.columns
+    ):
         df["IM판단"] = ""
 
     for col in NUMERIC_COLS:
         if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col],
-                errors="coerce",
-            ).fillna(0)
+            df[col] = (
+                pd.to_numeric(
+                    df[col],
+                    errors="coerce",
+                )
+                .fillna(0)
+            )
 
     df = df[
-        df["일자"].str.startswith("2025-")
+        df["일자"]
+        == str(date_value)
     ]
 
     df = df[
-        df["구역"].isin(AREA_LIST)
+        df["구역"]
+        .isin(
+            AREA_LIST
+        )
     ]
 
     return df
 
 
+# =========================================================
+# 표시 함수
+# =========================================================
+
 def fmt_num(value):
     try:
-        return f"{int(round(float(value))):,}"
+        return (
+            f"{int(round(float(value))):,}"
+        )
 
     except Exception:
-        return str(value)
+        return str(
+            value
+        )
 
 
 def fmt_signed(value):
     try:
-        return f"{int(round(float(value))):+,}"
+        return (
+            f"{int(round(float(value))):+,}"
+        )
 
     except Exception:
-        return str(value)
+        return str(
+            value
+        )
 
 
-def minute_to_hhmm(minute):
+def minute_to_hhmm(
+    minute,
+):
     minute = max(
         0,
         min(
@@ -874,19 +1080,28 @@ def minute_to_hhmm(minute):
     )
 
 
-def hhmm_to_minute(text):
-    hour, minute = str(text).split(":")
+def hhmm_to_minute(
+    text,
+):
+    hour, minute = (
+        str(text)
+        .split(":")
+    )
 
     return (
-        int(hour) * 60
+        int(hour)
+        * 60
         + int(minute)
     )
 
 
 def selectable_times():
     return [
-        minute_to_hhmm(minute)
-        for minute in range(
+        minute_to_hhmm(
+            minute
+        )
+        for minute
+        in range(
             0,
             1440,
             15,
@@ -894,9 +1109,13 @@ def selectable_times():
     ]
 
 
-def graph_window(selected_time):
-    center = hhmm_to_minute(
-        selected_time
+def graph_window(
+    selected_time,
+):
+    center = (
+        hhmm_to_minute(
+            selected_time
+        )
     )
 
     start = max(
@@ -931,15 +1150,23 @@ def unit_suffix(unit):
 
 def axis_name(area):
     if area == "전체":
-        return "필요 운영 수"
+        return (
+            "필요 운영 수"
+        )
 
     if area in SELF_COUNTERS:
-        return "필요 기기 수"
+        return (
+            "필요 기기 수"
+        )
 
     if area in IM_AREAS:
-        return "필요 출입문 수"
+        return (
+            "필요 출입문 수"
+        )
 
-    return "필요 창구 수"
+    return (
+        "필요 창구 수"
+    )
 
 
 def keep_rate(area):
@@ -1013,7 +1240,9 @@ def estimate_staff_from_units(
     )
 
 
-def add_recommendation_columns(rows):
+def add_recommendation_columns(
+    rows,
+):
     rows = rows.copy()
 
     decisions = []
@@ -1023,22 +1252,32 @@ def add_recommendation_columns(rows):
     adjust_staff = []
 
     for _, row in rows.iterrows():
-        area = row["구역"]
+        area = (
+            row["구역"]
+        )
 
         plan_units = int(
-            row["계획오픈수"]
+            row[
+                "계획오픈수"
+            ]
         )
 
         sensor_units = int(
-            row["실시간필요수"]
+            row[
+                "실시간필요수"
+            ]
         )
 
         plan_staff = int(
-            row["계획총직원수"]
+            row[
+                "계획총직원수"
+            ]
         )
 
         sensor_staff = int(
-            row["실시간총직원수"]
+            row[
+                "실시간총직원수"
+            ]
         )
 
         diff = (
@@ -1048,24 +1287,47 @@ def add_recommendation_columns(rows):
 
         if plan_units <= 0:
             if sensor_units > 0:
-                decision = "추가 필요"
-                final_units = sensor_units
-                final_staff = sensor_staff
+                decision = (
+                    "추가 필요"
+                )
+
+                final_units = (
+                    sensor_units
+                )
+
+                final_staff = (
+                    sensor_staff
+                )
 
             else:
-                decision = "계획 유지"
+                decision = (
+                    "계획 유지"
+                )
+
                 final_units = 0
                 final_staff = 0
 
         elif diff >= 2:
-            decision = "추가 필요"
-            final_units = sensor_units
-            final_staff = sensor_staff
+            decision = (
+                "추가 필요"
+            )
+
+            final_units = (
+                sensor_units
+            )
+
+            final_staff = (
+                sensor_staff
+            )
 
         elif diff <= -2:
-            minimum_units = math.ceil(
-                plan_units
-                * keep_rate(area)
+            minimum_units = (
+                math.ceil(
+                    plan_units
+                    * keep_rate(
+                        area
+                    )
+                )
             )
 
             final_units = max(
@@ -1073,8 +1335,13 @@ def add_recommendation_columns(rows):
                 minimum_units,
             )
 
-            if final_units < plan_units:
-                decision = "감축 검토"
+            if (
+                final_units
+                < plan_units
+            ):
+                decision = (
+                    "감축 검토"
+                )
 
                 final_staff = (
                     estimate_staff_from_units(
@@ -1084,21 +1351,39 @@ def add_recommendation_columns(rows):
                 )
 
             else:
-                decision = "계획 유지"
-                final_units = plan_units
-                final_staff = plan_staff
+                decision = (
+                    "계획 유지"
+                )
+
+                final_units = (
+                    plan_units
+                )
+
+                final_staff = (
+                    plan_staff
+                )
 
         else:
-            decision = "계획 유지"
-            final_units = plan_units
-            final_staff = plan_staff
+            decision = (
+                "계획 유지"
+            )
+
+            final_units = (
+                plan_units
+            )
+
+            final_staff = (
+                plan_staff
+            )
 
         decisions.append(
             decision
         )
 
         final_units_list.append(
-            int(final_units)
+            int(
+                final_units
+            )
         )
 
         adjust_units.append(
@@ -1109,7 +1394,9 @@ def add_recommendation_columns(rows):
         )
 
         final_staff_list.append(
-            int(final_staff)
+            int(
+                final_staff
+            )
         )
 
         adjust_staff.append(
@@ -1119,21 +1406,41 @@ def add_recommendation_columns(rows):
             )
         )
 
-    rows["조정판단"] = decisions
-    rows["권고필요수"] = final_units_list
-    rows["조정필요수"] = adjust_units
-    rows["권고직원수"] = final_staff_list
-    rows["직원조정수"] = adjust_staff
+    rows[
+        "조정판단"
+    ] = decisions
+
+    rows[
+        "권고필요수"
+    ] = final_units_list
+
+    rows[
+        "조정필요수"
+    ] = adjust_units
+
+    rows[
+        "권고직원수"
+    ] = final_staff_list
+
+    rows[
+        "직원조정수"
+    ] = adjust_staff
 
     return rows
 
 
-def base_area_frame(area):
+def base_area_frame(
+    area,
+):
     if area == "전체":
-        areas = AREA_LIST
+        areas = (
+            AREA_LIST
+        )
 
     else:
-        areas = [area]
+        areas = [
+            area
+        ]
 
     return pd.DataFrame(
         {
@@ -1142,39 +1449,64 @@ def base_area_frame(area):
     )
 
 
-def fill_snapshot_defaults(rows):
-    rows["유형"] = (
+def fill_snapshot_defaults(
+    rows,
+):
+    rows[
+        "유형"
+    ] = (
         rows["유형"]
         .fillna(
-            rows["구역"].map(TYPE_MAP)
+            rows["구역"]
+            .map(
+                TYPE_MAP
+            )
         )
     )
 
-    rows["단위"] = (
+    rows[
+        "단위"
+    ] = (
         rows["단위"]
         .fillna(
-            rows["구역"].map(UNIT_MAP)
+            rows["구역"]
+            .map(
+                UNIT_MAP
+            )
         )
     )
 
     for col in NUMERIC_COLS:
         if col in rows.columns:
-            rows[col] = pd.to_numeric(
-                rows[col],
-                errors="coerce",
-            ).fillna(0)
+            rows[col] = (
+                pd.to_numeric(
+                    rows[col],
+                    errors="coerce",
+                )
+                .fillna(0)
+            )
 
-    rows["상태"] = (
+    rows[
+        "상태"
+    ] = (
         rows["상태"]
-        .fillna("계획 유지")
+        .fillna(
+            "계획 유지"
+        )
     )
 
-    rows["권고"] = (
+    rows[
+        "권고"
+    ] = (
         rows["권고"]
-        .fillna("계획 유지")
+        .fillna(
+            "계획 유지"
+        )
     )
 
-    rows["IM판단"] = (
+    rows[
+        "IM판단"
+    ] = (
         rows["IM판단"]
         .fillna("")
     )
@@ -1188,61 +1520,93 @@ def current_snapshot(
     time_value,
     area,
 ):
-    minute = hhmm_to_minute(
-        time_value
+    minute = (
+        hhmm_to_minute(
+            time_value
+        )
     )
 
     rows = df[
-        (df["일자"] == date)
-        & (df["분"] == minute)
+        (
+            df["일자"]
+            == date
+        )
+        &
+        (
+            df["분"]
+            == minute
+        )
     ].copy()
 
     if not rows.empty:
-        rows = rows.drop_duplicates(
-            subset=["구역"],
-            keep="last",
+        rows = (
+            rows.drop_duplicates(
+                subset=[
+                    "구역",
+                ],
+                keep="last",
+            )
         )
 
-    rows = base_area_frame(
-        area
-    ).merge(
-        rows,
-        on="구역",
-        how="left",
+    rows = (
+        base_area_frame(
+            area
+        )
+        .merge(
+            rows,
+            on="구역",
+            how="left",
+        )
     )
 
     rows["일자"] = (
         rows["일자"]
-        .fillna(date)
+        .fillna(
+            date
+        )
     )
 
     rows["분"] = (
         rows["분"]
-        .fillna(minute)
+        .fillna(
+            minute
+        )
         .astype(int)
     )
 
     rows["시각"] = (
         rows["시각"]
-        .fillna(time_value)
+        .fillna(
+            time_value
+        )
     )
 
-    rows = fill_snapshot_defaults(
-        rows
+    rows = (
+        fill_snapshot_defaults(
+            rows
+        )
     )
 
-    rows = recalc_im_rows(
-        rows
+    rows = (
+        recalc_im_rows(
+            rows
+        )
     )
 
-    rows = add_recommendation_columns(
-        rows
+    rows = (
+        add_recommendation_columns(
+            rows
+        )
     )
 
     if area != "전체":
-        rows = rows[
-            rows["구역"] == area
-        ].copy()
+        rows = (
+            rows[
+                rows["구역"]
+                == area
+            ]
+            .copy()
+        )
 
     return rows
 
@@ -1255,18 +1619,35 @@ def day_series(
     end_min,
 ):
     day = df[
-        (df["일자"] == date)
-        & (df["분"] >= start_min)
-        & (df["분"] <= end_min)
+        (
+            df["일자"]
+            == date
+        )
+        &
+        (
+            df["분"]
+            >= start_min
+        )
+        &
+        (
+            df["분"]
+            <= end_min
+        )
     ].copy()
 
     if area != "전체":
-        day = day[
-            day["구역"] == area
-        ].copy()
+        day = (
+            day[
+                day["구역"]
+                == area
+            ]
+            .copy()
+        )
 
-    day = recalc_im_rows(
-        day
+    day = (
+        recalc_im_rows(
+            day
+        )
     )
 
     base = pd.DataFrame(
@@ -1282,12 +1663,19 @@ def day_series(
 
     base["시각"] = (
         base["분"]
-        .apply(minute_to_hhmm)
+        .apply(
+            minute_to_hhmm
+        )
     )
 
     if day.empty:
-        base["계획오픈수"] = 0
-        base["실시간필요수"] = 0
+        base[
+            "계획오픈수"
+        ] = 0
+
+        base[
+            "실시간필요수"
+        ] = 0
 
         return base
 
@@ -1314,17 +1702,24 @@ def day_series(
         "계획오픈수",
         "실시간필요수",
     ]:
-        out[col] = pd.to_numeric(
-            out[col],
-            errors="coerce",
-        ).fillna(0)
+        out[col] = (
+            pd.to_numeric(
+                out[col],
+                errors="coerce",
+            )
+            .fillna(0)
+        )
 
-    return out.sort_values(
-        "분"
+    return (
+        out.sort_values(
+            "분"
+        )
     )
 
 
-def get_live_end_minute(selected_time):
+def get_live_end_minute(
+    selected_time,
+):
     (
         start_min,
         end_min,
@@ -1333,12 +1728,19 @@ def get_live_end_minute(selected_time):
         selected_time
     )
 
-    selected_min = hhmm_to_minute(
-        selected_time
+    selected_min = (
+        hhmm_to_minute(
+            selected_time
+        )
     )
 
-    if "live_elapsed" not in st.session_state:
-        st.session_state["live_elapsed"] = 0
+    if (
+        "live_elapsed"
+        not in st.session_state
+    ):
+        st.session_state[
+            "live_elapsed"
+        ] = 0
 
     live_end = (
         selected_min
@@ -1381,17 +1783,21 @@ def make_chart_data(
         end_min,
     )
 
-    plan = series[
-        [
-            "분",
-            "시각",
-            "계획오픈수",
+    plan = (
+        series[
+            [
+                "분",
+                "시각",
+                "계획오픈수",
+            ]
         ]
-    ].copy()
+        .copy()
+    )
 
     plan = plan.rename(
         columns={
-            "계획오픈수": "필요수",
+            "계획오픈수":
+                "필요수",
         }
     )
 
@@ -1406,23 +1812,30 @@ def make_chart_data(
             selected_time,
         )
 
-    live_end = get_live_end_minute(
-        selected_time
+    live_end = (
+        get_live_end_minute(
+            selected_time
+        )
     )
 
-    sensor = series[
-        series["분"] <= live_end
-    ][
-        [
-            "분",
-            "시각",
-            "실시간필요수",
+    sensor = (
+        series[
+            series["분"]
+            <= live_end
+        ][
+            [
+                "분",
+                "시각",
+                "실시간필요수",
+            ]
         ]
-    ].copy()
+        .copy()
+    )
 
     sensor = sensor.rename(
         columns={
-            "실시간필요수": "필요수",
+            "실시간필요수":
+                "필요수",
         }
     )
 
@@ -1438,15 +1851,19 @@ def make_chart_data(
         ignore_index=True,
     )
 
-    chart = chart.sort_values(
-        [
-            "분",
-            "구분",
-        ]
+    chart = (
+        chart.sort_values(
+            [
+                "분",
+                "구분",
+            ]
+        )
     )
 
-    live_end_time = minute_to_hhmm(
-        live_end
+    live_end_time = (
+        minute_to_hhmm(
+            live_end
+        )
     )
 
     label = (
@@ -1462,6 +1879,10 @@ def make_chart_data(
         live_end_time,
     )
 
+
+# =========================================================
+# 카드
+# =========================================================
 
 def metric_card(
     title,
@@ -1513,6 +1934,10 @@ def summary_card(
     )
 
 
+# =========================================================
+# 그래프
+# =========================================================
+
 def draw_line_chart(
     chart,
     title_text,
@@ -1531,7 +1956,9 @@ def draw_line_chart(
 
     if not chart.empty:
         y_max = float(
-            chart["필요수"].max()
+            chart[
+                "필요수"
+            ].max()
         )
 
     else:
@@ -1540,7 +1967,8 @@ def draw_line_chart(
     y_top = max(
         1,
         math.ceil(
-            y_max * 1.15
+            y_max
+            * 1.15
         ),
     )
 
@@ -1558,9 +1986,11 @@ def draw_line_chart(
 
     fig.update_traces(
         mode="lines",
+
         line=dict(
             width=3,
         ),
+
         hovertemplate=(
             "시각=%{customdata[0]}<br>"
             "구분=%{customdata[1]}<br>"
@@ -1571,8 +2001,14 @@ def draw_line_chart(
 
     fig.update_layout(
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#0f1a2d",
+
+        paper_bgcolor=(
+            "rgba(0,0,0,0)"
+        ),
+
+        plot_bgcolor=(
+            "#0f1a2d"
+        ),
 
         font=dict(
             color="#dbe7f3",
@@ -1583,7 +2019,10 @@ def draw_line_chart(
         ),
 
         legend=dict(
-            bgcolor="rgba(0,0,0,0)",
+            bgcolor=(
+                "rgba(0,0,0,0)"
+            ),
+
             font=dict(
                 color="#dbe7f3",
             ),
@@ -1623,6 +2062,7 @@ def draw_line_chart(
         ],
 
         tickmode="linear",
+
         dtick=dtick,
 
         tickformat="d",
@@ -1630,7 +2070,10 @@ def draw_line_chart(
         rangemode="tozero",
 
         gridcolor="#263449",
-        zerolinecolor="#334155",
+
+        zerolinecolor=(
+            "#334155"
+        ),
 
         color="#cbd5e1",
     )
@@ -1641,12 +2084,18 @@ def draw_line_chart(
     )
 
 
+# =========================================================
+# 운영 전환 흐름
+# =========================================================
+
 def render_flow(row):
     suffix = unit_suffix(
         row["단위"]
     )
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = (
+        st.columns(3)
+    )
 
     with c1:
         st.markdown(
@@ -1688,7 +2137,9 @@ def render_flow(row):
         )
 
 
-def recommendation_reason(row):
+def recommendation_reason(
+    row,
+):
     area = str(
         row["구역"]
     )
@@ -1701,22 +2152,32 @@ def recommendation_reason(row):
         unit_name = "기기"
 
     else:
-        unit_name = row["단위"]
+        unit_name = (
+            row["단위"]
+        )
 
     plan_units = int(
-        row["계획오픈수"]
+        row[
+            "계획오픈수"
+        ]
     )
 
     sensor_units = int(
-        row["실시간필요수"]
+        row[
+            "실시간필요수"
+        ]
     )
 
     recommended_units = int(
-        row["권고필요수"]
+        row[
+            "권고필요수"
+        ]
     )
 
     decision = str(
-        row["조정판단"]
+        row[
+            "조정판단"
+        ]
     )
 
     if decision == "추가 필요":
@@ -1743,7 +2204,10 @@ def recommendation_reason(row):
             f"{area} 구역의 감축을 검토합니다."
         )
 
-    if sensor_units != plan_units:
+    if (
+        sensor_units
+        != plan_units
+    ):
         return (
             f"인원수 기준 필요 수는 "
             f"{sensor_units}{suffix}이지만 "
@@ -1752,14 +2216,19 @@ def recommendation_reason(row):
         )
 
     return (
-        "항공편 기반 계획과 인원수 기준 필요 수가 같아 "
+        "항공편 기반 계획과 "
+        "인원수 기준 필요 수가 같아 "
         "기존 계획을 유지합니다."
     )
 
 
-def render_decision_box(row):
+def render_decision_box(
+    row,
+):
     decision = str(
-        row["조정판단"]
+        row[
+            "조정판단"
+        ]
     )
 
     suffix = unit_suffix(
@@ -1767,11 +2236,15 @@ def render_decision_box(row):
     )
 
     adjust = int(
-        row["조정필요수"]
+        row[
+            "조정필요수"
+        ]
     )
 
     staff_adjust = int(
-        row["직원조정수"]
+        row[
+            "직원조정수"
+        ]
     )
 
     if decision == "추가 필요":
@@ -1819,16 +2292,30 @@ def render_decision_box(row):
     )
 
 
-def action_board(current):
-    priority = current[
-        current["조정판단"]
-        != "계획 유지"
-    ].copy()
+# =========================================================
+# 우선 조치
+# =========================================================
 
-    priority["정렬값"] = (
+def action_board(
+    current,
+):
+    priority = (
+        current[
+            current[
+                "조정판단"
+            ]
+            != "계획 유지"
+        ]
+        .copy()
+    )
+
+    priority[
+        "정렬값"
+    ] = (
         priority[
             "조정필요수"
-        ].abs()
+        ]
+        .abs()
     )
 
     priority = (
@@ -1844,8 +2331,10 @@ def action_board(current):
 
     if priority.empty:
         st.success(
-            "현재 데이터 기준 추가 운영 또는 "
-            "감축 검토가 필요한 구역이 없습니다."
+            "현재 데이터 기준 "
+            "추가 운영 또는 "
+            "감축 검토가 필요한 "
+            "구역이 없습니다."
         )
 
         return
@@ -1856,11 +2345,15 @@ def action_board(current):
         )
 
         adjust = int(
-            row["조정필요수"]
+            row[
+                "조정필요수"
+            ]
         )
 
         staff_adjust = int(
-            row["직원조정수"]
+            row[
+                "직원조정수"
+            ]
         )
 
         if adjust > 0:
@@ -1873,7 +2366,9 @@ def action_board(current):
             )
 
         else:
-            css_class = "reduce"
+            css_class = (
+                "reduce"
+            )
 
             title = (
                 f"{row['구역']} · "
@@ -1902,26 +2397,34 @@ def action_board(current):
         )
 
 
-def live_status_table(current):
-    table = current[
-        [
-            "구역",
-            "유형",
-            "계획오픈수",
-            "실시간필요수",
-            "권고필요수",
-            "조정필요수",
-            "조정판단",
-            "계획총직원수",
-            "권고직원수",
-            "직원조정수",
+def live_status_table(
+    current,
+):
+    table = (
+        current[
+            [
+                "구역",
+                "유형",
+                "계획오픈수",
+                "실시간필요수",
+                "권고필요수",
+                "조정필요수",
+                "조정판단",
+                "계획총직원수",
+                "권고직원수",
+                "직원조정수",
+            ]
         ]
-    ].copy()
+        .copy()
+    )
 
-    table["우선순위"] = (
+    table[
+        "우선순위"
+    ] = (
         table[
             "조정필요수"
-        ].abs()
+        ]
+        .abs()
     )
 
     table = (
@@ -1941,50 +2444,74 @@ def live_status_table(current):
 
     return table.rename(
         columns={
-            "계획오픈수": "사전 계획",
-            "실시간필요수": "LIVE 필요",
-            "권고필요수": "최종 권고",
-            "조정필요수": "운영 조정",
-            "조정판단": "판단",
-            "계획총직원수": "계획 직원",
-            "권고직원수": "권고 직원",
-            "직원조정수": "직원 조정",
+            "계획오픈수":
+                "사전 계획",
+            "실시간필요수":
+                "LIVE 필요",
+            "권고필요수":
+                "최종 권고",
+            "조정필요수":
+                "운영 조정",
+            "조정판단":
+                "판단",
+            "계획총직원수":
+                "계획 직원",
+            "권고직원수":
+                "권고 직원",
+            "직원조정수":
+                "직원 조정",
         }
     )
 
 
-def operation_table_off(current):
-    table = current[
-        [
-            "구역",
-            "유형",
-            "계획수요",
-            "계획오픈수",
-            "단위",
-            "계획기본직원수",
-            "계획지원직원수",
-            "계획총직원수",
+def operation_table_off(
+    current,
+):
+    table = (
+        current[
+            [
+                "구역",
+                "유형",
+                "계획수요",
+                "계획오픈수",
+                "단위",
+                "계획기본직원수",
+                "계획지원직원수",
+                "계획총직원수",
+            ]
         ]
-    ].copy()
+        .copy()
+    )
 
-    table = table.sort_values(
-        [
-            "계획오픈수",
-            "계획총직원수",
-        ],
-        ascending=False,
+    table = (
+        table.sort_values(
+            [
+                "계획오픈수",
+                "계획총직원수",
+            ],
+            ascending=False,
+        )
     )
 
     return table.rename(
         columns={
-            "계획수요": "계획 수요",
-            "계획오픈수": "계획 필요",
-            "계획기본직원수": "기본 직원",
-            "계획지원직원수": "지원 직원",
-            "계획총직원수": "총 직원",
+            "계획수요":
+                "계획 수요",
+            "계획오픈수":
+                "계획 필요",
+            "계획기본직원수":
+                "기본 직원",
+            "계획지원직원수":
+                "지원 직원",
+            "계획총직원수":
+                "총 직원",
         }
     )
 
+
+# =========================================================
+# 화면 제목
+# =========================================================
 
 st.markdown(
     (
@@ -1996,6 +2523,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 st.markdown(
     (
         '<div class="sub-title">'
@@ -2006,6 +2534,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+# =========================================================
+# 판단 기준
+# =========================================================
 
 with st.expander(
     "운영 판단 기준 보기",
@@ -2034,12 +2566,16 @@ with st.expander(
             ],
             [
                 "추가 운영",
-                "계획 대비 필요 수가 2개 이상 증가",
+                (
+                    "계획 대비 필요 수가 "
+                    "2개 이상 증가"
+                ),
             ],
             [
                 "감축 검토",
                 (
-                    "계획 대비 필요 수가 2개 이상 감소하며 "
+                    "계획 대비 필요 수가 "
+                    "2개 이상 감소하며 "
                     "최소 운영률 유지"
                 ),
             ],
@@ -2057,17 +2593,23 @@ with st.expander(
     )
 
 
-if not DATA_PATH.exists():
+# =========================================================
+# 데이터 존재 확인
+# =========================================================
+
+if (
+    not DATA_DIR.exists()
+    or not DATES_PATH.exists()
+):
     st.error(
-        "operation_dashboard_data.csv.gz 파일이 없습니다. "
-        "먼저 전처리 코드를 실행하세요."
+        "날짜별 운영 데이터가 없습니다. "
+        "먼저 make_operation_dashboard_data.py를 실행하세요."
     )
 
     st.code(
         (
-            'cd /d "G:\\캡디\\2026-07-30 '
-            '과제 2번 디벨롭"\n'
-            "python make_operation_dashboard_data.py"
+            "python "
+            "make_operation_dashboard_data.py"
         ),
         language="cmd",
     )
@@ -2075,32 +2617,24 @@ if not DATA_PATH.exists():
     st.stop()
 
 
-file_mtime = (
-    DATA_PATH.stat().st_mtime
-)
-
-df = load_data(
-    file_mtime
-)
+dates = load_dates()
 
 
-if df.empty:
+if not dates:
     st.error(
-        "데이터가 비어 있습니다. "
-        "전처리 결과를 확인하세요."
+        "operation_dates.csv에 "
+        "사용 가능한 날짜가 없습니다."
     )
 
     st.stop()
 
 
-dates = sorted(
-    df["일자"]
-    .dropna()
-    .unique()
-)
-
 times = selectable_times()
 
+
+# =========================================================
+# SIDEBAR
+# =========================================================
 
 with st.sidebar:
     st.header(
@@ -2123,7 +2657,9 @@ with st.sidebar:
         "데이터 기준 시각",
         times,
         index=(
-            times.index("08:00")
+            times.index(
+                "08:00"
+            )
             if "08:00" in times
             else 0
         ),
@@ -2141,15 +2677,17 @@ with st.sidebar:
     refresh_seconds = 20
 
     if mode == "LIVE":
-        refresh_seconds = st.selectbox(
-            "LIVE 갱신 간격",
-            [
-                10,
-                20,
-                30,
-                60,
-            ],
-            index=1,
+        refresh_seconds = (
+            st.selectbox(
+                "LIVE 갱신 간격",
+                [
+                    10,
+                    20,
+                    30,
+                    60,
+                ],
+                index=1,
+            )
         )
 
     st.caption(
@@ -2161,6 +2699,49 @@ with st.sidebar:
     )
 
 
+# =========================================================
+# 선택 날짜 하루치만 로드
+# =========================================================
+
+selected_file = daily_path(
+    selected_date
+)
+
+
+if not selected_file.exists():
+    st.error(
+        f"선택 날짜 데이터 파일이 없습니다: "
+        f"{selected_file.name}"
+    )
+
+    st.stop()
+
+
+file_mtime = (
+    selected_file
+    .stat()
+    .st_mtime
+)
+
+
+df = load_day(
+    selected_date,
+    file_mtime,
+)
+
+
+if df.empty:
+    st.error(
+        "선택 날짜 데이터가 비어 있습니다."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# LIVE 세션
+# =========================================================
+
 session_key = (
     f"{selected_date}|"
     f"{selected_area}|"
@@ -2170,15 +2751,23 @@ session_key = (
 
 
 if (
-    st.session_state.get("session_key")
+    st.session_state.get(
+        "session_key"
+    )
     != session_key
 ):
-    st.session_state["session_key"] = (
-        session_key
-    )
+    st.session_state[
+        "session_key"
+    ] = session_key
 
-    st.session_state["live_elapsed"] = 0
+    st.session_state[
+        "live_elapsed"
+    ] = 0
 
+
+# =========================================================
+# OFF
+# =========================================================
 
 def render_off_view():
     (
@@ -2205,7 +2794,8 @@ def render_off_view():
     )
 
     st.subheader(
-        f"🗓️ {selected_date} "
+        f"🗓️ "
+        f"{selected_date} "
         f"{selected_time} "
         "사전 운영계획"
     )
@@ -2219,20 +2809,25 @@ def render_off_view():
         unsafe_allow_html=True,
     )
 
-    plan_demand = current[
-        "계획수요"
-    ].sum()
+    plan_demand = (
+        current[
+            "계획수요"
+        ]
+        .sum()
+    )
 
     plan_units = int(
         current[
             "계획오픈수"
-        ].sum()
+        ]
+        .sum()
     )
 
     plan_staff = int(
         current[
             "계획총직원수"
-        ].sum()
+        ]
+        .sum()
     )
 
     active_areas = int(
@@ -2241,10 +2836,13 @@ def render_off_view():
                 "계획오픈수"
             ]
             > 0
-        ).sum()
+        )
+        .sum()
     )
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4 = (
+        st.columns(4)
+    )
 
     with c1:
         metric_card(
@@ -2256,7 +2854,10 @@ def render_off_view():
         )
 
     with c2:
-        if selected_area == "전체":
+        if (
+            selected_area
+            == "전체"
+        ):
             metric_card(
                 y_title,
                 fmt_num(
@@ -2283,7 +2884,10 @@ def render_off_view():
         )
 
     with c4:
-        if selected_area == "전체":
+        if (
+            selected_area
+            == "전체"
+        ):
             metric_card(
                 "운영 구역",
                 fmt_num(
@@ -2295,7 +2899,9 @@ def render_off_view():
         else:
             metric_card(
                 "구역 유형",
-                current.iloc[0][
+                current.iloc[
+                    0
+                ][
                     "유형"
                 ],
             )
@@ -2319,9 +2925,11 @@ def render_off_view():
         y_title,
     )
 
-
-    # 전체 구역일 때 표를 클릭하지 않고 바로 표시
-    if selected_area == "전체":
+    # 전체 구역 표는 기본으로 바로 표시
+    if (
+        selected_area
+        == "전체"
+    ):
         st.markdown(
             (
                 '<div class="section-title">'
@@ -2339,9 +2947,10 @@ def render_off_view():
             hide_index=True,
         )
 
-
     else:
-        row = current.iloc[0]
+        row = (
+            current.iloc[0]
+        )
 
         suffix = unit_suffix(
             row["단위"]
@@ -2356,7 +2965,9 @@ def render_off_view():
             unsafe_allow_html=True,
         )
 
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4 = (
+            st.columns(4)
+        )
 
         with c1:
             metric_card(
@@ -2403,6 +3014,10 @@ def render_off_view():
             )
 
 
+# =========================================================
+# LIVE
+# =========================================================
+
 def render_live_view():
     (
         chart,
@@ -2428,7 +3043,8 @@ def render_live_view():
     )
 
     st.subheader(
-        f"🟢 {selected_date} "
+        f"🟢 "
+        f"{selected_date} "
         f"{data_time} "
         "LIVE 운영 보정"
     )
@@ -2439,7 +3055,8 @@ def render_live_view():
                 "조정판단"
             ]
             == "추가 필요"
-        ).sum()
+        )
+        .sum()
     )
 
     reduce_count = int(
@@ -2448,7 +3065,8 @@ def render_live_view():
                 "조정판단"
             ]
             == "감축 검토"
-        ).sum()
+        )
+        .sum()
     )
 
     keep_count = int(
@@ -2457,13 +3075,15 @@ def render_live_view():
                 "조정판단"
             ]
             == "계획 유지"
-        ).sum()
+        )
+        .sum()
     )
 
     staff_adjust = int(
         current[
             "직원조정수"
-        ].sum()
+        ]
+        .sum()
     )
 
     if add_count > 0:
@@ -2472,8 +3092,11 @@ def render_live_view():
         )
 
         strip_text = (
-            f"LIVE · 추가 운영 {add_count}곳, "
-            f"감축 검토 {reduce_count}곳이 확인되었습니다."
+            f"LIVE · 추가 운영 "
+            f"{add_count}곳, "
+            f"감축 검토 "
+            f"{reduce_count}곳이 "
+            "확인되었습니다."
         )
 
     elif reduce_count > 0:
@@ -2483,7 +3106,8 @@ def render_live_view():
 
         strip_text = (
             f"LIVE · 감축 검토 "
-            f"{reduce_count}곳이 확인되었습니다."
+            f"{reduce_count}곳이 "
+            "확인되었습니다."
         )
 
     else:
@@ -2505,9 +3129,13 @@ def render_live_view():
         unsafe_allow_html=True,
     )
 
-
-    if selected_area == "전체":
-        c1, c2, c3, c4 = st.columns(4)
+    if (
+        selected_area
+        == "전체"
+    ):
+        c1, c2, c3, c4 = (
+            st.columns(4)
+        )
 
         with c1:
             summary_card(
@@ -2556,7 +3184,6 @@ def render_live_view():
             current
         )
 
-
         st.markdown(
             (
                 '<div class="section-title">'
@@ -2574,22 +3201,19 @@ def render_live_view():
             hide_index=True,
 
             column_config={
-                "운영 조정": (
+                "운영 조정":
                     st.column_config.NumberColumn(
                         format="%+d",
-                    )
-                ),
+                    ),
 
-                "직원 조정": (
+                "직원 조정":
                     st.column_config.NumberColumn(
                         format="%+d",
-                    )
-                ),
+                    ),
             },
         )
 
-
-        # LIVE 그래프 기본 표시
+        # 그래프는 접지 않고 항상 표시
         st.markdown(
             (
                 '<div class="section-title">'
@@ -2609,14 +3233,14 @@ def render_live_view():
             y_title,
         )
 
-
     else:
-        row = current.iloc[0]
+        row = (
+            current.iloc[0]
+        )
 
         suffix = unit_suffix(
             row["단위"]
         )
-
 
         st.markdown(
             (
@@ -2635,8 +3259,9 @@ def render_live_view():
             row
         )
 
-
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4 = (
+            st.columns(4)
+        )
 
         with c1:
             metric_card(
@@ -2691,9 +3316,9 @@ def render_live_view():
                 ],
             )
 
-
         if (
-            selected_area in IM_AREAS
+            selected_area
+            in IM_AREAS
             and str(
                 row[
                     "IM판단"
@@ -2705,8 +3330,7 @@ def render_live_view():
                 f"{row['IM판단']}"
             )
 
-
-        # 선택 구역에서도 그래프 기본 표시
+        # 선택 구역에서도 그래프 항상 표시
         st.markdown(
             (
                 '<div class="section-title">'
@@ -2726,7 +3350,6 @@ def render_live_view():
             y_title,
         )
 
-
     (
         _,
         end_min,
@@ -2741,7 +3364,10 @@ def render_live_view():
         )
     )
 
-    if current_live_end < end_min:
+    if (
+        current_live_end
+        < end_min
+    ):
         st.session_state[
             "live_elapsed"
         ] = (
@@ -2754,6 +3380,10 @@ def render_live_view():
             + 1
         )
 
+
+# =========================================================
+# 실행
+# =========================================================
 
 if mode == "OFF":
     render_off_view()
@@ -2773,12 +3403,12 @@ else:
 
         st.stop()
 
-
     @st.fragment(
-        run_every=f"{int(refresh_seconds)}s"
+        run_every=(
+            f"{int(refresh_seconds)}s"
+        )
     )
     def live_fragment():
         render_live_view()
-
 
     live_fragment()
