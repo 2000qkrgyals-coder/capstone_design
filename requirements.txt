@@ -1,4 +1,4 @@
-streamlit
+streamlit==1.37.1
 streamlit-autorefresh
 numpy
 pillow
@@ -11,4 +11,3 @@ plotly
 opencv-python-headless
 openai
 google-genai
-streamlit>=1.32
