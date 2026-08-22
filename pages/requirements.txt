@@ -1,3 +1,13 @@
-streamlit>=1.32
+streamlit==1.37.1
+streamlit-autorefresh
+numpy
+pillow
+matplotlib
+scipy
 pandas
+scikit-learn
+joblib
 plotly
+opencv-python-headless
+openai
+google-genai
