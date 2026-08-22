@@ -5,21 +5,14 @@ from typing import Dict, List, Mapping, Optional, Tuple
 import json
 import math
 import os
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import streamlit as st
 
-from pathlib import Path
-import sys
-
-# 1. 최상위 루트 경로를 파이썬 경로에 추가
-ROOT_DIR = Path(__file__).resolve().parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.append(str(ROOT_DIR))
-
-# 2. modules 폴더 안에서 가져오도록 경로 수정된 임포트문
 from modules.ai_helper import (
     build_structured_context,
     deterministic_operation_answer,
@@ -66,61 +59,407 @@ from modules.simulation import (
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
-OPERATION_PATH = DATA_DIR / "operation_dashboard_sep2025.csv.gz"
-FLIGHT_PATH = DATA_DIR / "flight_counter_sep2025.csv"
+OPERATION_PATH = DATA_DIR / "operation_dashboard_oct2025.csv.gz"
+FLIGHT_PATH = DATA_DIR / "flight_counter_oct2025.csv"
+
+st.set_page_config(
+    page_title="ICN T2 가상 운영 시나리오 & AI 의사결정",
+    page_icon="✈️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 
 # -----------------------------------------------------------------------------
-# Visual system
+# Visual system · forced dark UI
 # -----------------------------------------------------------------------------
+DARK_BG = "#07111F"
+DARK_SIDEBAR = "#0A1625"
+DARK_PANEL = "#0D1B2A"
+DARK_PANEL_2 = "#112338"
+DARK_LINE = "#263A52"
+DARK_GRID = "#1D3045"
+TEXT_MAIN = "#E6EDF3"
+TEXT_MUTED = "#91A4B7"
+ACCENT = "#4DA3FF"
+ACCENT_2 = "#38BDF8"
+GOOD = "#2DD4BF"
+WARN = "#F59E0B"
+BAD = "#FB7185"
+PLOT_COLORS = [ACCENT, GOOD, WARN, "#A78BFA", "#FB7185", "#22C55E", "#F97316", "#60A5FA"]
+DARK_HEAT_SCALE = [
+    [0.00, "#08111D"],
+    [0.16, "#0B263B"],
+    [0.35, "#0E4569"],
+    [0.55, "#176A9E"],
+    [0.76, "#2D8FD0"],
+    [1.00, "#7DD3FC"],
+]
+
+# Plotly is forced to the same palette as the Streamlit UI. This remains dark
+# even when the browser/OS is using a light appearance.
+pio.templates["icn_dark"] = go.layout.Template(
+    layout=go.Layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=DARK_PANEL,
+        font=dict(color=TEXT_MAIN, family="Arial, 'Noto Sans KR', sans-serif", size=13),
+        colorway=PLOT_COLORS,
+        hoverlabel=dict(bgcolor="#12263B", bordercolor="#35506C", font_color=TEXT_MAIN),
+        legend=dict(bgcolor="rgba(7,17,31,0.76)", bordercolor=DARK_LINE, borderwidth=1),
+        title=dict(font=dict(color=TEXT_MAIN, size=17)),
+        xaxis=dict(gridcolor=DARK_GRID, linecolor=DARK_LINE, zerolinecolor=DARK_LINE, tickfont=dict(color=TEXT_MUTED), title_font=dict(color=TEXT_MAIN)),
+        yaxis=dict(gridcolor=DARK_GRID, linecolor=DARK_LINE, zerolinecolor=DARK_LINE, tickfont=dict(color=TEXT_MUTED), title_font=dict(color=TEXT_MAIN)),
+        colorscale=dict(sequential=DARK_HEAT_SCALE),
+    )
+)
+pio.templates.default = "icn_dark"
+
+
+def darken_plot(fig: go.Figure) -> go.Figure:
+    """Normalize every Plotly figure so it remains legible on the forced dark UI."""
+    fig.update_layout(
+        template="icn_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=DARK_PANEL,
+        font=dict(color=TEXT_MAIN),
+        hoverlabel=dict(bgcolor="#12263B", bordercolor="#35506C", font_color=TEXT_MAIN),
+        legend=dict(bgcolor="rgba(7,17,31,0.72)", bordercolor=DARK_LINE, borderwidth=1, font=dict(color=TEXT_MAIN)),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor=DARK_GRID,
+        gridwidth=1,
+        linecolor=DARK_LINE,
+        zerolinecolor=DARK_LINE,
+        tickfont=dict(color=TEXT_MUTED),
+        title_font=dict(color=TEXT_MAIN),
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor=DARK_GRID,
+        gridwidth=1,
+        linecolor=DARK_LINE,
+        zerolinecolor=DARK_LINE,
+        tickfont=dict(color=TEXT_MUTED),
+        title_font=dict(color=TEXT_MAIN),
+    )
+    return fig
+
+
 st.markdown(
-    """
+    r"""
 <style>
 :root {
-  --navy:#0B1F33;
-  --blue:#1769AA;
-  --sky:#EAF4FB;
-  --ink:#142433;
-  --muted:#607587;
-  --line:#D9E4EC;
-  --good:#137A54;
-  --warn:#B96A00;
-  --bad:#B42318;
-  --panel:#F7FAFC;
+  --bg:#07111F;
+  --sidebar:#0A1625;
+  --panel:#0D1B2A;
+  --panel2:#112338;
+  --panel3:#152A41;
+  --ink:#E6EDF3;
+  --muted:#91A4B7;
+  --line:#263A52;
+  --accent:#4DA3FF;
+  --accent2:#38BDF8;
+  --good:#2DD4BF;
+  --warn:#F59E0B;
+  --bad:#FB7185;
 }
-.block-container {padding-top: 1.25rem; padding-bottom: 3rem; max-width: 1550px;}
-[data-testid="stSidebar"] {background: #F5F8FB; border-right: 1px solid var(--line);}
-h1,h2,h3 {letter-spacing:-0.02em; color:var(--ink);}
+
+/* App canvas: force dark regardless of Streamlit/browser appearance. */
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+  background:var(--bg) !important;
+  color:var(--ink) !important;
+}
+[data-testid="stAppViewBlockContainer"], .block-container {
+  padding-top:1.25rem;
+  padding-bottom:3rem;
+  max-width:1550px;
+}
+[data-testid="stHeader"] {
+  background:rgba(7,17,31,.92) !important;
+  border-bottom:1px solid rgba(38,58,82,.75);
+  backdrop-filter:blur(10px);
+}
+[data-testid="stToolbar"], [data-testid="stDecoration"] {background:transparent !important;}
+[data-testid="stSidebar"] {
+  background:var(--sidebar) !important;
+  border-right:1px solid var(--line) !important;
+}
+[data-testid="stSidebar"] > div:first-child {background:var(--sidebar) !important;}
+
+/* Typography */
+h1,h2,h3,h4,h5,h6, p, li, label, .stMarkdown, [data-testid="stCaptionContainer"] {
+  color:var(--ink);
+}
+h1,h2,h3 {letter-spacing:-0.02em;}
+[data-testid="stCaptionContainer"], small {color:var(--muted) !important;}
+a {color:#70B7FF !important;}
+hr {border-color:var(--line) !important;}
+
+/* Hero / cards */
 .hero {
-  padding: 22px 26px; border-radius: 18px;
-  background: linear-gradient(125deg, #071A2B 0%, #0D3557 60%, #165F91 100%);
-  color: white; margin-bottom: 14px;
-  box-shadow: 0 10px 28px rgba(11,31,51,.15);
+  padding:22px 26px;
+  border:1px solid #22476A;
+  border-radius:18px;
+  background:linear-gradient(125deg,#071A2B 0%,#0C2C49 52%,#123E63 100%);
+  color:white;
+  margin-bottom:14px;
+  box-shadow:0 14px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
 }
-.hero h1 {color:white; margin:0 0 5px 0; font-size:1.85rem;}
-.hero p {margin:0; color:#DCEAF5; font-size:.98rem;}
-.kpi-grid {display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:10px; margin:10px 0 18px 0;}
+.hero h1 {color:white !important; margin:0 0 5px 0; font-size:1.85rem;}
+.hero p {margin:0; color:#C8D8E8 !important; font-size:.98rem;}
+.kpi-grid {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:10px 0 18px 0;}
 .kpi {
-  background:white; border:1px solid var(--line); border-radius:14px; padding:14px 15px;
-  box-shadow:0 3px 12px rgba(10,40,60,.04);
+  background:linear-gradient(180deg,#102238 0%,#0D1B2A 100%);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px 15px;
+  box-shadow:0 6px 18px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.025);
 }
-.kpi .label {font-size:.78rem; color:var(--muted); font-weight:700; margin-bottom:5px;}
-.kpi .value {font-size:1.42rem; color:var(--ink); font-weight:800; line-height:1.15;}
-.kpi .sub {font-size:.75rem; color:var(--muted); margin-top:5px;}
-.notice {border:1px solid var(--line); background:var(--panel); border-radius:12px; padding:12px 14px; margin:8px 0 12px 0;}
-.badge {display:inline-block; padding:3px 8px; border-radius:999px; font-size:.75rem; font-weight:700; margin-right:5px;}
-.badge-blue {background:#E6F1F9; color:#155A8A;}
-.badge-green {background:#E7F6EF; color:#146B4A;}
-.badge-warn {background:#FFF3DF; color:#9A5B00;}
-.badge-red {background:#FDEBE9; color:#A12B20;}
-.section-title {font-size:1.08rem; font-weight:800; margin:14px 0 8px 0; color:var(--ink);}
-.counter-wrap {background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:8px;}
-.counter-grid {display:grid; grid-template-columns:repeat(20, minmax(0,1fr)); gap:4px;}
-.counter-cell {height:29px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:700; border:1px solid #D8E2E9; background:#EEF3F6; color:#728493;}
-.counter-cell.on {background:#1769AA; border-color:#1769AA; color:white;}
-.counter-cell.full {background:#0D4C78; border-color:#0D4C78; color:white;}
-.legend-row {display:flex; gap:12px; align-items:center; font-size:.78rem; color:var(--muted); margin-top:8px;}
-.dot {width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:4px;}
-@media (max-width: 1100px) {.kpi-grid {grid-template-columns:repeat(2,1fr);} .counter-grid {grid-template-columns:repeat(10,1fr);}}
+.kpi .label {font-size:.78rem;color:var(--muted);font-weight:700;margin-bottom:5px;}
+.kpi .value {font-size:1.42rem;color:#F4F8FC;font-weight:800;line-height:1.15;}
+.kpi .sub {font-size:.75rem;color:var(--muted);margin-top:5px;}
+.notice {border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 14px;margin:8px 0 12px 0;}
+.section-title {font-size:1.08rem;font-weight:800;margin:14px 0 8px 0;color:#F2F7FB;}
+
+/* Badges */
+.badge {display:inline-block;padding:3px 8px;border-radius:999px;font-size:.75rem;font-weight:700;margin-right:5px;border:1px solid transparent;}
+.badge-blue {background:#102D49;color:#87C7FF;border-color:#214A6D;}
+.badge-green {background:#0E302B;color:#6EE7D2;border-color:#21534B;}
+.badge-warn {background:#35250C;color:#F8C86D;border-color:#654814;}
+.badge-red {background:#391B25;color:#FDA4AF;border-color:#663040;}
+
+/* Native KPI metrics */
+[data-testid="stMetric"] {
+  background:linear-gradient(180deg,#102238 0%,#0D1B2A 100%);
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:12px 14px;
+  min-height:98px;
+}
+[data-testid="stMetricLabel"] {color:var(--muted) !important;}
+[data-testid="stMetricValue"] {color:#F4F8FC !important;}
+[data-testid="stMetricDelta"] {color:#A9BED1 !important;}
+
+/* Buttons */
+.stButton > button, .stDownloadButton > button, button[kind="secondary"] {
+  background:#12243A !important;
+  color:var(--ink) !important;
+  border:1px solid #35506C !important;
+  border-radius:9px !important;
+  box-shadow:none !important;
+}
+.stButton > button:hover, .stDownloadButton > button:hover {
+  background:#17304C !important;
+  border-color:#5EA9EE !important;
+  color:white !important;
+}
+.stButton > button:focus {box-shadow:0 0 0 2px rgba(77,163,255,.25) !important;}
+button[kind="primary"], .stButton > button[kind="primary"] {
+  background:linear-gradient(180deg,#267FE0,#1768BD) !important;
+  border-color:#4DA3FF !important;
+  color:white !important;
+}
+button[kind="primary"]:hover {background:linear-gradient(180deg,#3892F1,#1D74D1) !important;}
+
+/* Selects, inputs, textareas, number/date fields */
+[data-baseweb="select"] > div,
+[data-baseweb="base-input"],
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stDateInput"] input,
+[data-testid="stTextArea"] textarea,
+.stTextArea textarea,
+.stTextInput input {
+  background:#0F2033 !important;
+  color:var(--ink) !important;
+  border-color:#2D4661 !important;
+}
+[data-baseweb="select"] *, [data-baseweb="base-input"] * {color:var(--ink) !important;}
+[data-baseweb="popover"], [data-baseweb="menu"], [role="listbox"] {
+  background:#0F2033 !important;
+  color:var(--ink) !important;
+  border-color:var(--line) !important;
+}
+[role="option"] {background:#0F2033 !important;color:var(--ink) !important;}
+[role="option"]:hover, [aria-selected="true"][role="option"] {background:#17304C !important;color:white !important;}
+[data-baseweb="calendar"], [data-baseweb="calendar"] > div, [data-baseweb="calendar"] div {background-color:#0F2033 !important;color:var(--ink) !important;}
+[data-baseweb="calendar"] button {color:var(--ink) !important;}
+[data-baseweb="calendar"] button:hover {background:#17304C !important;}
+[data-baseweb="calendar"] [aria-selected="true"] {background:#176FC1 !important;color:white !important;}
+input::placeholder, textarea::placeholder {color:#71869A !important;}
+
+/* Sliders and toggles */
+[data-testid="stSlider"] [data-baseweb="slider"] > div > div {background:#334A61;}
+[data-testid="stSlider"] [role="slider"] {background:#4DA3FF !important;border-color:#8CC8FF !important;}
+[data-testid="stSlider"] p, [data-testid="stSlider"] span {color:var(--ink) !important;}
+[data-testid="stSlider"] [data-testid="stTickBarMin"],
+[data-testid="stSlider"] [data-testid="stTickBarMax"],
+[data-testid="stSlider"] [data-testid="stTickBarValue"],
+[data-testid="stSlider"] [class*="tick-bar"],
+[data-testid="stSlider"] [class*="stTickBar"] {
+  background:transparent !important;
+  color:var(--ink) !important;
+  border:none !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  border-radius:0 !important;
+}
+[data-testid="stSlider"] [data-testid="stTickBarMin"] *,
+[data-testid="stSlider"] [data-testid="stTickBarMax"] *,
+[data-testid="stSlider"] [data-testid="stTickBarValue"] * {
+  background:transparent !important;
+  color:var(--ink) !important;
+  border:none !important;
+  box-shadow:none !important;
+}
+[data-testid="stCheckbox"] label, [data-testid="stToggle"] label {color:var(--ink) !important;}
+
+/* Tabs */
+[data-baseweb="tab-list"] {
+  gap:12px;
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,#091625 0%,#0B1827 100%);
+  padding:10px 12px 12px 12px;
+  border-radius:16px;
+  box-shadow:0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.02);
+  margin:6px 0 18px 0;
+  flex-wrap:wrap;
+}
+[data-baseweb="tab"] {
+  color:var(--muted) !important;
+  background:linear-gradient(180deg,#102238 0%,#0D1B2A 100%) !important;
+  border:1px solid #29425A !important;
+  border-radius:12px !important;
+  padding:10px 18px !important;
+  min-height:48px !important;
+  box-shadow:0 4px 12px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.02);
+  transition:all .18s ease;
+}
+[data-baseweb="tab"]:hover {
+  background:linear-gradient(180deg,#15304A 0%,#10253A 100%) !important;
+  color:var(--ink) !important;
+  border-color:#4C6D8E !important;
+  transform:translateY(-1px);
+}
+[data-baseweb="tab"][aria-selected="true"] {
+  color:#DDF1FF !important;
+  background:linear-gradient(180deg,#184F84 0%,#12395B 100%) !important;
+  border-color:#5FB2FF !important;
+  box-shadow:0 10px 18px rgba(6,16,26,.24), 0 0 0 1px rgba(93,178,255,.16) inset;
+}
+[data-baseweb="tab"] p, [data-baseweb="tab"] span {
+  color:inherit !important;
+  font-weight:700 !important;
+}
+[data-baseweb="tab-highlight"] {
+  display:none !important;
+}
+/* clear content separation under tabs */
+[data-baseweb="tab-panel"] {
+  background:linear-gradient(180deg,#0B1624 0%,#0C1A29 100%);
+  border:1px solid rgba(38,58,82,.85);
+  border-radius:16px;
+  padding:18px 18px 12px 18px;
+  box-shadow:0 10px 26px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.015);
+  margin-top:2px;
+}
+/* nested tabs use a slightly subtler treatment */
+[data-baseweb="tab-panel"] [data-baseweb="tab-list"] {
+  gap:8px;
+  padding:8px 10px 10px 10px;
+  border-radius:14px;
+  background:#0C1725;
+  margin:0 0 14px 0;
+}
+[data-baseweb="tab-panel"] [data-baseweb="tab"] {
+  min-height:42px !important;
+  padding:8px 14px !important;
+  border-radius:10px !important;
+}
+
+/* Expanders, forms and containers */
+[data-testid="stExpander"] {
+  background:var(--panel) !important;
+  border:1px solid var(--line) !important;
+  border-radius:10px !important;
+}
+[data-testid="stExpander"] summary, [data-testid="stExpander"] summary * {color:var(--ink) !important;}
+[data-testid="stForm"] {background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+
+/* Alerts */
+[data-testid="stAlert"] {background:#102238 !important;border:1px solid #2E4965 !important;border-radius:10px !important;color:var(--ink) !important;}
+[data-testid="stAlert"] * {color:inherit !important;}
+div[data-baseweb="notification"] {background:var(--panel2) !important;color:var(--ink) !important;border-color:var(--line) !important;}
+
+/* Dataframes / editors. Streamlit theme handles the grid canvas; this styles its frame and toolbar. */
+[data-testid="stDataFrame"], [data-testid="stDataEditor"] {
+  background:var(--panel) !important;
+  border:1px solid var(--line) !important;
+  border-radius:10px;
+  overflow:hidden;
+}
+[data-testid="stDataFrame"] [data-testid="stElementToolbar"],
+[data-testid="stDataEditor"] [data-testid="stElementToolbar"] {background:#0D1B2A !important;}
+[data-testid="stDataFrame"] button, [data-testid="stDataEditor"] button {color:var(--ink) !important;}
+
+/* JSON / code */
+[data-testid="stJson"], pre, code {
+  background:#091827 !important;
+  color:#CFE5F7 !important;
+  border-color:var(--line) !important;
+}
+
+/* Counter line visualization */
+.counter-wrap {
+  background:linear-gradient(180deg,#102238 0%,#0D1B2A 100%);
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  margin-top:8px;
+}
+.counter-grid {display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:4px;}
+.counter-cell {
+  height:29px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-weight:700;border:1px solid #2B4058;background:#122238;color:#70869B;
+}
+.counter-cell.on {background:#176FC1;border-color:#4DA3FF;color:white;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);}
+.counter-cell.full {background:#0E5A99;border-color:#38BDF8;color:white;}
+.legend-row {display:flex;gap:12px;align-items:center;font-size:.78rem;color:var(--muted);margin-top:8px;}
+.dot {width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;}
+
+/* Plotly containers blend into the page instead of showing a light box. */
+[data-testid="stPlotlyChart"] {
+  background:var(--panel) !important;
+  border:1px solid rgba(38,58,82,.9);
+  border-radius:12px;
+  padding:4px;
+  overflow:hidden;
+}
+
+
+/* Remove bright rectangles around Streamlit slider tick labels */
+[data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background-color: rgb(240"],
+[data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background: rgb(240"],
+[data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background-color: rgba(255"],
+[data-testid="stSidebar"] [data-testid="stSlider"] div[style*="background: rgba(255"] {
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+}
+
+/* Scrollbars */
+* {scrollbar-color:#38536F #0A1625;scrollbar-width:thin;}
+::-webkit-scrollbar {width:10px;height:10px;}
+::-webkit-scrollbar-track {background:#0A1625;}
+::-webkit-scrollbar-thumb {background:#38536F;border-radius:8px;border:2px solid #0A1625;}
+::-webkit-scrollbar-thumb:hover {background:#4B6C8A;}
+
+@media (max-width:1100px) {
+  .kpi-grid {grid-template-columns:repeat(2,1fr);}
+  .counter-grid {grid-template-columns:repeat(10,1fr);}
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -130,7 +469,7 @@ h1,h2,h3 {letter-spacing:-0.02em; color:var(--ink);}
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-@st.cache_data(show_spinner="9월 운영 데이터를 불러오는 중입니다...")
+@st.cache_data(show_spinner="운영 데이터를 불러오는 중입니다...")
 def get_operation_data(path_str: str, mtime: float) -> pd.DataFrame:
     return load_operation_data(path_str)
 
@@ -192,7 +531,7 @@ def line_visual_html(area: str, active: int, owner_text: str = "") -> str:
     <div><b>{active}/40</b> 개방</div>
   </div>
   <div class="counter-grid">{''.join(cells)}</div>
-  <div class="legend-row"><span><span class="dot" style="background:#1769AA"></span>운영</span><span><span class="dot" style="background:#EEF3F6;border:1px solid #D8E2E9"></span>비운영</span></div>
+  <div class="legend-row"><span><span class="dot" style="background:#176FC1;border:1px solid #4DA3FF"></span>운영</span><span><span class="dot" style="background:#122238;border:1px solid #2B4058"></span>비운영</span></div>
 </div>
 """
 
@@ -362,7 +701,7 @@ with st.sidebar:
     demand_change_pct = st.slider("해당 항공사 수요 변화", -30, 50, 0, 5, format="%d%%")
 
     st.divider()
-    st.caption("데이터: 2025-09-01 ~ 2025-09-30")
+    st.caption("데이터: 2025-09-01 ~ 2025-10-31")
     if quality["operation_duplicates"] == 0:
         st.success("운영 데이터 중복 키 없음", icon="✅")
     if quality["missing_counter_rows"] > 0:
@@ -441,7 +780,7 @@ st.markdown(
     f"""
 <div class="hero">
   <h1>ICN T2 가상 운영 시나리오 & AI 의사결정 지원</h1>
-  <p>9월 실제 1분 단위 운영 데이터를 기준으로 체크인 라인·셀프기기·IM 출입문 재배치 효과를 사전 검증합니다.</p>
+  <p>2025년 9월~10월 실제 1분 단위 운영 데이터를 기준으로 체크인 라인·셀프기기·IM 출입문 재배치 효과를 사전 검증합니다.</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -465,7 +804,7 @@ kpi_html(
 
 st.markdown(
     '<span class="badge badge-blue">과거 재현 시뮬레이션</span>'
-    '<span class="badge badge-green">9월 실제 운영 데이터</span>'
+    '<span class="badge badge-green">9~10월 실제 운영 데이터</span>'
     '<span class="badge badge-warn">대기시간은 모델 추정값</span>',
     unsafe_allow_html=True,
 )
@@ -495,7 +834,7 @@ with tab_overview:
     )
     fig = px.bar(chart_df, x="구역", y="운영 수", color="구분", barmode="group", text_auto=".0f")
     fig.update_layout(height=420, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="", yaxis_title="운영 수", xaxis_title="")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(darken_plot(fig), use_container_width=True)
 
     left, right = st.columns([1.45, 1])
     with left:
@@ -512,6 +851,7 @@ with tab_overview:
             fig_h = go.Figure(
                 data=go.Heatmap(
                     z=pivot.to_numpy(),
+                    colorscale=DARK_HEAT_SCALE,
                     x=[minute_to_hhmm(int(x)) for x in xvals],
                     y=pivot.index.tolist(),
                     colorbar=dict(title="인원"),
@@ -519,7 +859,7 @@ with tab_overview:
                 )
             )
             fig_h.update_layout(height=450, margin=dict(l=10, r=10, t=10, b=10), xaxis_title="", yaxis_title="")
-            st.plotly_chart(fig_h, use_container_width=True)
+            st.plotly_chart(darken_plot(fig_h), use_container_width=True)
     with right:
         st.markdown('<div class="section-title">현재 병목 후보</div>', unsafe_allow_html=True)
         bottleneck_now = snap.copy()
@@ -789,12 +1129,12 @@ with tab_result:
     fig_q = go.Figure()
     fig_q.add_trace(go.Scatter(
         x=temporal_df["minute_index"], y=temporal_df["reference_queue"],
-        mode="lines", name="기준안", customdata=temporal_df["시각"],
+        mode="lines", name="기준안", line=dict(color="#94A3B8", width=2.2), customdata=temporal_df["시각"],
         hovertemplate="%{customdata}<br>기준안 %{y:.0f}명<extra></extra>",
     ))
     fig_q.add_trace(go.Scatter(
         x=temporal_df["minute_index"], y=temporal_df["candidate_queue"],
-        mode="lines", name="변경안", customdata=temporal_df["시각"],
+        mode="lines", name="변경안", line=dict(color="#38BDF8", width=2.6), customdata=temporal_df["시각"],
         hovertemplate="%{customdata}<br>변경안 %{y:.0f}명<extra></extra>",
     ))
 
@@ -805,7 +1145,7 @@ with tab_result:
             if i == len(states) or states[i] != states[start_i]:
                 state = states[start_i]
                 if state in {"개선", "악화"}:
-                    fill = "rgba(19,122,84,0.08)" if state == "개선" else "rgba(180,35,24,0.08)"
+                    fill = "rgba(45,212,191,0.12)" if state == "개선" else "rgba(251,113,133,0.12)"
                     fig_q.add_vrect(
                         x0=float(temporal_df.iloc[start_i]["minute_index"]) - 0.5,
                         x1=float(temporal_df.iloc[i-1]["minute_index"]) + 0.5,
@@ -817,7 +1157,7 @@ with tab_result:
     for j, cross_idx in enumerate(crossings[:3]):
         label = minute_to_clock.get(int(cross_idx), "")
         fig_q.add_vline(
-            x=int(cross_idx), line_width=1, line_dash="dot",
+            x=int(cross_idx), line_width=1, line_dash="dot", line_color="#CBD5E1",
             annotation_text=(f"교차 {label}" if j == 0 else None),
             annotation_position="top",
         )
@@ -830,17 +1170,17 @@ with tab_result:
         title="전체 추정 대기부하 · 녹색 배경=개선 / 적색 배경=악화",
     )
     fig_q.update_xaxes(tickmode="array", tickvals=tick_rows["minute_index"], ticktext=tick_rows["시각"])
-    st.plotly_chart(fig_q, use_container_width=True)
+    st.plotly_chart(darken_plot(fig_q), use_container_width=True)
 
     fig_tw = go.Figure()
     fig_tw.add_trace(go.Scatter(
         x=temporal_df["minute_index"], y=temporal_df["reference_weighted_wait"], mode="lines",
-        name="기준안", customdata=temporal_df["시각"],
+        name="기준안", line=dict(color="#94A3B8", width=2.2), customdata=temporal_df["시각"],
         hovertemplate="%{customdata}<br>기준안 %{y:.1f}분<extra></extra>",
     ))
     fig_tw.add_trace(go.Scatter(
         x=temporal_df["minute_index"], y=temporal_df["candidate_weighted_wait"], mode="lines",
-        name="변경안", customdata=temporal_df["시각"],
+        name="변경안", line=dict(color="#38BDF8", width=2.6), customdata=temporal_df["시각"],
         hovertemplate="%{customdata}<br>변경안 %{y:.1f}분<extra></extra>",
     ))
     fig_tw.update_layout(
@@ -849,7 +1189,7 @@ with tab_result:
         title="시간대별 추정 평균 대기시간",
     )
     fig_tw.update_xaxes(tickmode="array", tickvals=tick_rows["minute_index"], ticktext=tick_rows["시각"])
-    st.plotly_chart(fig_tw, use_container_width=True)
+    st.plotly_chart(darken_plot(fig_tw), use_container_width=True)
 
     if crossings:
         crossing_text = ", ".join(minute_to_clock.get(int(x), str(x)) for x in crossings[:5])
@@ -868,12 +1208,13 @@ with tab_result:
         )
         fig_w = px.bar(area_cmp, x="area", y="평균대기", color="시나리오", barmode="group", labels={"area": "구역", "평균대기": "평균 대기시간(분)"})
         fig_w.update_layout(height=420, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="", xaxis_title="")
-        st.plotly_chart(fig_w, use_container_width=True)
+        st.plotly_chart(darken_plot(fig_w), use_container_width=True)
     with c2:
         scenario_pivot = stime.pivot_table(index="area", columns="시각", values="wait_min", aggfunc="mean").reindex(ALL_AREAS)
         fig_heat = go.Figure(
             data=go.Heatmap(
                 z=scenario_pivot.to_numpy(),
+                colorscale=DARK_HEAT_SCALE,
                 x=scenario_pivot.columns.tolist(),
                 y=scenario_pivot.index.tolist(),
                 colorbar=dict(title="대기분"),
@@ -881,7 +1222,7 @@ with tab_result:
             )
         )
         fig_heat.update_layout(height=420, margin=dict(l=10, r=10, t=20, b=10), xaxis_title="", yaxis_title="")
-        st.plotly_chart(fig_heat, use_container_width=True)
+        st.plotly_chart(darken_plot(fig_heat), use_container_width=True)
 
     st.markdown('<div class="section-title">병목 순위</div>', unsafe_allow_html=True)
     bott = top_bottlenecks(scenario_long, 8).rename(
@@ -911,9 +1252,9 @@ with tab_result:
             .reset_index()
         )
         st.dataframe(summary, use_container_width=True, hide_index=True)
-        fig_mc = px.box(mc, x="scenario", y="avg_wait_min", points="all", labels={"avg_wait_min": "평균 대기시간(분)", "scenario": ""})
+        fig_mc = px.box(mc, x="scenario", y="avg_wait_min", points="all", color="scenario", color_discrete_sequence=["#94A3B8", "#38BDF8"], labels={"avg_wait_min": "평균 대기시간(분)", "scenario": ""})
         fig_mc.update_layout(height=350, margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig_mc, use_container_width=True)
+        st.plotly_chart(darken_plot(fig_mc), use_container_width=True)
     else:
         st.caption("② 시나리오 설정에서 '불확실성 포함 시뮬레이션 실행'을 누르면 반복 결과의 범위를 확인할 수 있습니다.")
 
@@ -1154,7 +1495,7 @@ with tab_ai:
                 airline=q_airline or None,
                 demand_change_pct=q_shock,
                 assumptions=[
-                    "2025년 9월 1분 단위 운영·인원 데이터 재생",
+                    "2025년 9월~10월 1분 단위 운영·인원 데이터 재생",
                     "유인 체크인 각 라인은 1~40 연속 슬롯으로 가정",
                     "대기시간은 운영 데이터의 자원 산정 규칙에 맞춘 처리율로 추정",
                     "항공사 수요 변화는 항공편 좌석 가중치 기준으로 관련 구역 유입량에 비례 반영",
@@ -1191,7 +1532,7 @@ with tab_quality:
     q1, q2, q3, q4 = st.columns(4)
     q1.metric("운영 데이터 행", f"{quality['operation_rows']:,}")
     q2.metric("운영 일수", f"{quality['operation_dates']}일")
-    q3.metric("9월 출발편", f"{quality['flight_rows']:,}편")
+    q3.metric("9~10월 출발편", f"{quality['flight_rows']:,}편")
     q4.metric("항공사", f"{quality['airlines']}개")
 
     st.markdown("### 자동 검수 결과")
@@ -1212,7 +1553,7 @@ with tab_quality:
 - **IM1/IM2:** 기존 운영 앱과 동일하게 수요가 있으면 최소 3개, 최대 6개 출입문을 기준으로 합니다.
 - **기준 운영안:** 기존 2번 앱의 계획 대비 실시간 필요 수 차이와 최소 유지 비율 로직을 재현합니다.
 - **대기시간:** 실제 승객별 체크인 시작·종료 로그가 없으므로 직접 관측값이 아닙니다. 1분 단위 구역 인원과 기준 운영 수에서 유입량을 역산하고, 기존 자원 산정 규칙과 목표 대기시간에 맞춘 처리율로 계산한 추정값입니다.
-- **항공사 수요 변화:** 좌석 수 자체를 그대로 승객 수로 더하지 않습니다. 항공편 좌석 가중치로 해당 항공사가 각 구역 수요에서 차지하는 비율을 구한 뒤 기존 9월 유입량을 비례 조정합니다.
+- **항공사 수요 변화:** 좌석 수 자체를 그대로 승객 수로 더하지 않습니다. 항공편 좌석 가중치로 해당 항공사가 각 구역 수요에서 차지하는 비율을 구한 뒤 기존 9~10월 유입량을 비례 조정합니다.
 - **체크인→IM 병목 전이:** 체크인 처리량이 기준보다 증가/감소하면 일정 이동 지연 후 IM1/IM2 유입량에 반영합니다.
 """
     )
@@ -1232,5 +1573,5 @@ with tab_quality:
         st.dataframe(snap, use_container_width=True, hide_index=True)
 
 st.caption(
-    "프로토타입 범위: 2025년 9월 과거 데이터 재현. 실제 실시간 운영 적용 전에는 S-WARD 신규 데이터 수집, 실제 서비스 완료 로그, 카운터 물리 배치표와 인력 근무 제약을 추가 검증해야 합니다."
+    "프로토타입 범위: 2025년 9월~10월 과거 데이터 재현. 실제 실시간 운영 적용 전에는 S-WARD 신규 데이터 수집, 실제 서비스 완료 로그, 카운터 물리 배치표와 인력 근무 제약을 추가 검증해야 합니다."
 )
