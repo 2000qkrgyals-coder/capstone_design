@@ -7,7 +7,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from simulation import (
+from modules.simulation import (
     ALL_AREAS,
     AREA_TYPES,
     CHECKIN_AREAS,
@@ -21,7 +21,7 @@ from simulation import (
 )
 
 DATE_MIN = "2025-09-01"
-DATE_MAX = "2025-09-30"
+DATE_MAX = "2025-10-31"
 
 
 def load_operation_data(path: str | Path) -> pd.DataFrame:
@@ -74,7 +74,7 @@ def load_flight_data(path: str | Path) -> pd.DataFrame:
     df = pd.read_csv(path, encoding="utf-8-sig")
     df["일자_dt"] = pd.to_datetime(df["일자"].astype(str), format="%Y%m%d", errors="coerce")
     # 9/1 이른 항공편의 전날 체크인 수요를 계산하기 위해 8/31을 유지한다.
-    df = df[(df["일자_dt"] >= pd.Timestamp("2025-08-31")) & (df["일자_dt"] <= pd.Timestamp("2025-09-30"))].copy()
+    df = df[(df["일자_dt"] >= pd.Timestamp("2025-08-31")) & (df["일자_dt"] <= pd.Timestamp("2025-10-31"))].copy()
     df = df[df["구분"].astype(str).eq("여객")].copy()
     df = df[~df["상태"].astype(str).eq("취소")].copy()
     df["좌석수"] = pd.to_numeric(df["좌석수"], errors="coerce").fillna(0).clip(lower=0)
@@ -184,7 +184,7 @@ def build_baseline_inputs(
         )
 
     # 기준 체크인 처리량은 결합 시뮬레이션의 하류(IM) 전이를 계산할 때 사용한다.
-    from simulation import simulate_single_area
+    from modules.simulation import simulate_single_area
     for area in CHECKIN_AREAS:
         f = simulate_single_area(
             arrivals=arrivals[area],
