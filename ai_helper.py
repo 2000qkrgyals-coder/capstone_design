@@ -182,7 +182,7 @@ def deterministic_operation_answer(context: Mapping[str, object]) -> str:
         )
 
     lines.append(
-        "\n※ 본 수치는 2025년 9월 1분 단위 운영·인원 데이터를 재생한 시뮬레이션 추정값입니다. "
+        "\n※ 본 수치는 2025년 9월~10월 1분 단위 운영·인원 데이터를 재생한 시뮬레이션 추정값입니다. "
         "실제 승객별 서비스 완료 로그가 아니므로 절대 대기시간보다 기준안 대비 변화량을 중심으로 해석하세요."
     )
     return "\n".join(lines)
