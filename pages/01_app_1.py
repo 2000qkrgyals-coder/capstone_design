@@ -11,11 +11,6 @@ import altair as alt
 AREA_FILE_PATH = "terminal_areas_grouped_2.csv"         
 BACKGROUND_IMAGE_PATH = "ICN_Airport_3F.png"         
 
-st.set_page_config(
-    page_title="ICN T2 Integrated Operations Center (IOC)", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # --- [디자인 시스템: 극도로 전문적인 하이엔드 관제 스타일 CSS 적용] ---
 st.markdown("""
@@ -294,7 +289,58 @@ st.markdown("""
             background: #1e293b !important;
             color: #ffffff !important;
         }
-    </style>
+    
+        /* Streamlit 1.37 native widget finish */
+        [data-testid="stDateInput"] input,
+        [data-testid="stTextInput"] input,
+        [data-testid="stNumberInput"] input,
+        [data-baseweb="base-input"],
+        [data-baseweb="select"] > div {
+            background:#0F2033 !important;
+            color:#E6EDF3 !important;
+            border-color:#304A64 !important;
+            box-shadow:none !important;
+        }
+        input:disabled,
+        [data-testid="stDateInput"] input:disabled {
+            background:#0D1B2A !important;
+            color:#9EB1C4 !important;
+            -webkit-text-fill-color:#9EB1C4 !important;
+            border-color:#263A52 !important;
+            opacity:1 !important;
+        }
+        [data-testid="stSlider"] [role="slider"] {
+            background:#4DA3FF !important;
+            border:2px solid #8CC8FF !important;
+        }
+        [data-testid="stSlider"] [data-testid*="TickBar"],
+        [data-testid="stSlider"] [class*="TickBar"],
+        [data-testid="stSlider"] [class*="tickBar"] {
+            background:transparent !important;
+            border:none !important;
+            box-shadow:none !important;
+        }
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown(r"""
+<style>
+/* ===== V6 FINAL POLISH / Streamlit 1.37 ===== */
+[data-testid="stSlider"] [data-testid="stTickBar"]{display:none!important;}
+.slider-range-labels{display:flex;justify-content:space-between;align-items:center;margin-top:-.35rem;margin-bottom:.55rem;padding:0 1px;color:#A9BED1;font-size:.76rem;line-height:1;}
+.slider-range-labels span{background:transparent!important;color:#A9BED1!important;border:0!important;box-shadow:none!important;padding:0!important;}
+[role="menu"],[role="menu"]>div,[role="menuitem"],[role="menuitem"]>div,div[data-baseweb="popover"]>div,div[data-baseweb="popover"] [data-baseweb="menu"]{background:#0F2033!important;color:#E6EDF3!important;border-color:#263A52!important;}
+[role="menuitem"]:hover,[role="menuitem"]:focus{background:#17304C!important;color:#FFF!important;}
+[role="menuitem"][aria-disabled="true"],[role="menuitem"][data-disabled="true"],[role="menuitem"] button:disabled,[data-baseweb="popover"] button:disabled{background:#0B1725!important;color:#60758A!important;opacity:1!important;}
+.dark-table-shell{width:100%;overflow:auto;border:1px solid #29425A;border-radius:12px;background:#0B1725;box-shadow:0 7px 20px rgba(0,0,0,.14);margin:.25rem 0 .9rem 0;}
+.dark-html-table{width:100%;border-collapse:separate;border-spacing:0;color:#E6EDF3;font-size:.86rem;background:#0D1B2A;}
+.dark-html-table thead th{position:sticky;top:0;z-index:2;background:#112338!important;color:#BFD3E6!important;font-weight:700;text-align:left;padding:10px 12px;border-right:1px solid #2A4058;border-bottom:1px solid #36516C;white-space:nowrap;}
+.dark-html-table tbody td{background:#0D1B2A!important;color:#E6EDF3!important;padding:9px 12px;border-right:1px solid #1F3348;border-bottom:1px solid #1F3348;white-space:nowrap;}
+.dark-html-table tbody tr:nth-child(even) td{background:#0B1928!important}.dark-html-table tbody tr:hover td{background:#122B42!important}
+.dark-html-table th:last-child,.dark-html-table td:last-child{border-right:0}.dark-html-table tbody tr:last-child td{border-bottom:0}
+[data-testid="stDataEditor"] iframe,[data-testid="stDataEditor"] canvas,[data-testid="stDataFrame"] iframe,[data-testid="stDataFrame"] canvas{background:#0D1B2A!important;}
+</style>
 """, unsafe_allow_html=True)
 
 # --- [인력 배치 및 로직 함수] ---
@@ -379,23 +425,39 @@ menu = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🛠️ 시스템 제어 패널")
-selected_date = st.sidebar.date_input("📅 관제 대상일자 선택", value=datetime.date(2025, 10, 4))
-target_date_str = selected_date.strftime("%Y-%m-%d")
 
-# 데이터 선조회
-area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
+# [역할 분리 적용] 실시간 모드일 때와 아카이브 모드일 때 사이드바 제어 패널 분기
+if menu != "📡 실시간 센서 파이프라인 (Live)":
+    st.sidebar.markdown("### 🛠️ 아카이브 제어 패널")
+    selected_date = st.sidebar.date_input("📅 관제 대상일자 선택 (Playback)", value=datetime.date(2025, 10, 4))
+    target_date_str = selected_date.strftime("%Y-%m-%d")
+
+    # 데이터 선조회
+    area_df, past_time_data, past_unique_times, bg_img, exists = load_data_by_date(target_date_str)
+else:
+    st.sidebar.markdown("### 📡 라이브 스트림 상태")
+    st.sidebar.markdown("""
+        <div style="background-color: #111827; padding: 10px; border-radius: 6px; border: 1px solid #10b981; color: #10b981; font-size: 0.85rem; text-align: center;">
+            <strong>🟢 LIVE STREAM ACTIVE</strong><br/>
+            <span style="color: #94a3b8; font-size: 0.75rem;">실시간 모드에서는 과거 날짜 선택이 비활성화됩니다.</span>
+        </div>
+    """, unsafe_allow_html=True)
+    # 라이브 모드 기본 기본 자원 로드
+    area_df = pd.read_csv(AREA_FILE_PATH) if pd.io.common.file_exists(AREA_FILE_PATH) else pd.DataFrame()
+    bg_img = cv2.imread(BACKGROUND_IMAGE_PATH)
+    if bg_img is None: bg_img = np.full((600, 1900, 3), 240, dtype=np.uint8)
+
 
 # ==========================================
-# 1. 🚨 통합 관제 상황판 (Dashboard)
+# 1. 🚨 통합 관제 상황판 (Dashboard - 아카이브/플레이백 모드)
 # ==========================================
 if menu == "🚨 통합 관제 상황판 (Dashboard)":
     st.title("🛡️ 인천공항 T2 3층 통합 운영 상황판 (IOC Dashboard)")
     
     st.markdown(f"""
         <div style="background-color: #111827; padding: 10px 16px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #94a3b8; font-size: 0.9rem;">📅 현재 관제 일자: <strong style="color: #f8fafc;">{target_date_str}</strong></span>
-            <span style="color: #94a3b8; font-size: 0.9rem;">시스템 통신 상태: <strong style="color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 4px;">● ONLINE / SYNCED</strong></span>
+            <span style="color: #94a3b8; font-size: 0.9rem;">📂 아카이브 관제 일자: <strong style="color: #f8fafc;">{target_date_str}</strong> (재생 모드)</span>
+            <span style="color: #94a3b8; font-size: 0.9rem;">시스템 상태: <strong style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 8px; border-radius: 4px;">● ARCHIVE REPLAY SYNCED</strong></span>
         </div>
     """, unsafe_allow_html=True)
     
@@ -406,9 +468,13 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
         idx_to_label = {t: index_to_time_str(t) for t in time_options}
 
         selected_t_index = st.select_slider(
-            "🕒 [실시간 타임라인 시뮬레이터] 관제 시점 제어", 
+            "🕒 [아카이브 타임라인 시뮬레이터] 과거 관제 시점 제어", 
             options=time_options, 
             format_func=lambda x: idx_to_label[x]
+        )
+        st.markdown(
+            f'<div class="slider-range-labels"><span>{idx_to_label[time_options[0]]}</span><span>{idx_to_label[time_options[-1]]}</span></div>',
+            unsafe_allow_html=True,
         )
         
         current_counts = past_time_data[selected_t_index]['counts']
@@ -431,19 +497,19 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
 
         if urgent_areas:
             top_urgent = max(urgent_areas, key=urgent_areas.get)
-            st.warning(f"🚨 **[자동 경보 발령]** 현재 **{top_urgent}** 구역의 체류 여객이 임계치(80명)를 초과했습니다. (현재 체류: **{urgent_areas[top_urgent]}명**). 즉시 현장 지원 인력 투입 및 창구 확대를 권고합니다.")
+            st.warning(f"🚨 **[자동 경보 발령]** 선택 시점 **{top_urgent}** 구역의 체류 여객이 임계치(80명)를 초과했습니다. (체류: **{urgent_areas[top_urgent]}명**).")
         else:
-            st.success("✨ **[정상 운영]** 현재 터미널 내 모든 구역이 안정적인 밀집도 범위 내에서 원활하게 소화되고 있습니다.")
+            st.success("✨ **[정상 운영]** 해당 시점 터미널 내 모든 구역이 안정적인 범위 내에 있습니다.")
 
         c1, c2 = st.columns([1.6, 1])
         with c1:
-            st.subheader("🗺️ 실시간 터미널 3층 공간 밀집도 히트맵")
+            st.subheader("🗺️ 아카이브 공간 밀집도 히트맵")
             heatmap = generate_density_heatmap(area_df, filtered_counts, bg_img.shape)
             blended = cv2.addWeighted(bg_img, 0.55, heatmap, 0.45, 0)
-            st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_container_width=True)
+            st.image(cv2.cvtColor(blended, cv2.COLOR_BGR2RGB), use_column_width=True)
             
         with c2:
-            st.subheader("📊 실시간 혼잡 Top 5 구역")
+            st.subheader("📊 해당 시점 혼잡 Top 5 구역")
             sorted_areas = sorted(filtered_counts.items(), key=lambda x: x[1], reverse=True)[:5]
             df_top5 = pd.DataFrame(sorted_areas, columns=["구역", "인원"])
             
@@ -459,11 +525,11 @@ if menu == "🚨 통합 관제 상황판 (Dashboard)":
             st.altair_chart(top5_chart, use_container_width=True)
 
 # ==========================================
-# 2. 🗺️ 터미널 구역별 상세 분석
+# 2. 🗺️ 터미널 구역별 상세 분석 (아카이브 심층 분석)
 # ==========================================
 elif menu == "🗺️ 터미널 구역별 상세 분석":
     st.title("📈 구역별 여객 흐름 및 시계열 트렌드 심층 분석")
-    st.markdown("전체 터미널 흐름을 파악하고, **특정 구역들을 선택하여 상세 인원 추이와 피크 타임**을 정밀 검토합니다.")
+    st.markdown(f"선택된 아카이브 일자 (**{target_date_str}**) 기준 전체 터미널 흐름 및 구역별 피크 타임을 정밀 검토합니다.")
     
     if not exists:
         st.error("데이터가 없습니다.")
@@ -474,6 +540,7 @@ elif menu == "🗺️ 터미널 구역별 상세 분석":
             value=5,
             help="노이즈를 제거하고 추세를 파악하기 위한 구간 설정"
         )
+        st.sidebar.markdown('<div class="slider-range-labels"><span>1분</span><span>10분</span></div>', unsafe_allow_html=True)
         
         st.subheader("📉 터미널 전체 여객 인원 흐름 시계열 분석")
         
@@ -685,20 +752,73 @@ elif menu == "🔍 모델 예측 및 검증 (Validation)":
     st.altair_chart(val_chart, use_container_width=True)
 
 # ==========================================
-# 4. 📡 실시간 센서 파이프라인 (Live)
+# 4. 📡 실시간 센서 파이프라인 (Live - 현재 시각 라이브 관제)
 # ==========================================
 elif menu == "📡 실시간 센서 파이프라인 (Live)":
     st.title("📡 실시간 센서 파이프라인 및 스트리밍 센터")
-    st.markdown("공항 내부 비전 센서(CCTV/AI 카운팅)로부터 실시간 스트리밍 데이터를 수신하여 파이프라인 상태를 모니터링합니다.")
+    st.markdown("""
+    > **[LIVE STREAMING MODE]** 본 모드는 과거 아카이브 조회가 아닌, **현재 시각 기준 비전 센서 노드 스트림**을 실시간 연동하여 관제하는 영역입니다.
+    """)
     
-    st.info("🟢 **[Status: CONNECTED]** 인천국제공항 제2여객터미널 3층 출국장 비전 센서 노드와 정상적으로 소켓 통신 중입니다.")
+    current_live_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.markdown(f"""
+        <div style="background-color: #111827; padding: 10px 16px; border-radius: 8px; border: 1px solid #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #94a3b8; font-size: 0.9rem;">⚡ 실시간 수신 시각: <strong style="color: #10b981;">{current_live_time}</strong></span>
+            <span style="color: #94a3b8; font-size: 0.9rem;">센서 노드 통신: <strong style="color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 4px;">● ONLINE / LOW LATENCY (12ms)</strong></span>
+        </div>
+    """, unsafe_allow_html=True)
     
     live_col1, live_col2, live_col3 = st.columns(3)
     live_col1.metric("활성 비전 센서 노드", "42 / 42 대", delta="100% 정상 가동")
-    live_col2.metric("데이터 패킷 수신 주기", "10초 Interval", delta="지연 없음 (Low Latency)")
-    live_col3.metric("네트워크 상태", "Stable (12ms)", delta="Optimal")
+    live_col2.metric("패킷 수신 주기", "10초 Interval", delta="실시간 동기화 중")
+    live_col3.metric("평균 처리 지연", "18 ms", delta="Optimal")
     
     st.divider()
-    st.subheader("🛠️ 실시간 라이브 스트리밍 제어")
-    if st.button("🔄 실시간 데이터 수신 스트림 강제 동기화 (Sync)"):
-        st.success("성공적으로 스트림 버퍼가 리프레시되었습니다.")
+    
+    # 실시간 모의 라이브 데이터 연동 시뮬레이션
+    st.subheader("🗺️ 실시간 터미널 3층 라이브 히트맵 및 구역별 부하")
+    
+    # 라이브 구역 임의 데이터 생성 (실제 API/스트림 연동 시 이 부분을 실시간 소켓/DB 수신부로 교체)
+    if not area_df.empty and 'area_name' in area_df.columns:
+        mock_live_counts = {}
+        np.random.seed(int(datetime.datetime.now().second)) # 초단위로 실시간 변동 주는 시뮬레이션
+        for aname in area_df['area_name'].unique():
+            mock_live_counts[aname] = int(np.random.randint(10, 110))
+            
+        live_filtered = {k: v for k, v in mock_live_counts.items() if k not in ["GH", "IM1", "IM2"]}
+        
+        lc1, lc2 = st.columns([1.6, 1])
+        with lc1:
+            st.markdown("##### 📍 실시간 공간 밀집도 스트림 뷰")
+            live_heatmap = generate_density_heatmap(area_df, live_filtered, bg_img.shape)
+            live_blended = cv2.addWeighted(bg_img, 0.55, live_heatmap, 0.45, 0)
+            st.image(cv2.cvtColor(live_blended, cv2.COLOR_BGR2RGB), use_column_width=True)
+            
+        with lc2:
+            st.markdown("##### 📊 실시간 구역별 여객 분포 Top 5")
+            sorted_live = sorted(live_filtered.items(), key=lambda x: x[1], reverse=True)[:5]
+            df_live_top5 = pd.DataFrame(sorted_live, columns=["구역", "인원"])
+            
+            live_chart = alt.Chart(df_live_top5).mark_bar(
+                color="#10b981", cornerRadiusTopLeft=4, cornerRadiusTopRight=4
+            ).encode(
+                x=alt.X('구역:N', sort='-y', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc', labelAngle=0), title='구역'),
+                y=alt.Y('인원:Q', axis=alt.Axis(labelColor='#94a3b8', titleColor='#f8fafc'), title='실시간 인원 (명)')
+            ).properties(height=350).configure(
+                background='#07090e',
+                view=alt.ViewConfig(stroke=None)
+            )
+            st.altair_chart(live_chart, use_container_width=True)
+    else:
+        st.warning("⚠️ 구역 정의 파일(AREA_FILE_PATH)을 불러오지 못해 라이브 비전 뷰를 렌더링할 수 없습니다.")
+
+    st.divider()
+    st.subheader("🛠️ 실시간 라이브 스트리밍 제어 패널")
+    
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🔄 실시간 데이터 수신 스트림 강제 동기화 (Sync)"):
+            st.success("실시간 센서 소켓 버퍼가 성공적으로 리프레시되었습니다.")
+    with col_btn2:
+        if st.button("🚨 라이브 비상 경보 채널 리셋 (Reset Alarms)"):
+            st.info("모든 라이브 경보 플래그가 초기화되었습니다.")
